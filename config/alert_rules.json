@@ -13,11 +13,15 @@
     },
     "take_profit_ma5": {
       "urgency": "eod_action",
-      "description": "強勢股收盤跌破5MA移動停利"
+      "description": "強勢股收盤跌破5MA→移動停利（鎖定已獲利漲幅，不是停損）"
     },
     "take_profit_ma10": {
       "urgency": "eod_action",
-      "description": "一般持股收盤跌破10MA移動停利"
+      "description": "一般持股收盤跌破10MA→移動停利（鎖定已獲利漲幅）"
+    },
+    "take_profit_roi_partial": {
+      "urgency": "eod_action",
+      "description": "相對成本達標→分批停利（先把利潤落袋，剩餘續抱用移動停利）"
     },
     "entry_ma5": {
       "urgency": "eod_action",
@@ -76,6 +80,10 @@
     "us_alert_pct": -3.0,
     "gold_alert_pct": -5.0,
     "crypto_alert_pct": -8.0,
-    "us_etf_alert_pct": -5.0
+    "us_etf_alert_pct": -5.0,
+    "take_profit_roi_1": 12.0,
+    "take_profit_roi_1_frac": 0.33,
+    "take_profit_roi_2": 25.0,
+    "take_profit_roi_2_frac": 0.33
   }
 }

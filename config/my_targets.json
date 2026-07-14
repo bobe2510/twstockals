@@ -40,68 +40,281 @@
   "watchlist": [
     {
       "code": "0050",
-      "name": "元大台灣50"
+      "name": "元大台灣50",
+      "role": "tw_core",
+      "note": "台股中低風險主軸；新資金優先於個股"
     },
     {
-      "code": "00635U",
-      "name": "元大S&P黃金"
-    },
-    {
-      "code": "00682U",
-      "name": "元大美元指數"
+      "code": "00631L",
+      "name": "元大台灣50正2",
+      "role": "tw_growth",
+      "note": "台股進攻袖；准許加碼但 Level≥3 禁止；與QQQ同屬成長風險"
     },
     {
       "code": "VOO",
       "name": "Vanguard S&P500",
-      "market": "US"
+      "market": "US",
+      "role": "us_core",
+      "note": "美股底倉；IB 恢復後與 VXUS 搭配"
+    },
+    {
+      "code": "VXUS",
+      "name": "Vanguard Total International Stock",
+      "market": "US",
+      "role": "ex_us",
+      "note": "非美分散；與 VOO 約 7:3"
     },
     {
       "code": "QQQ",
       "name": "Invesco Nasdaq100",
-      "market": "US"
+      "market": "US",
+      "role": "growth",
+      "note": "成長衛星；部位小於 VOO。同等風險可改 QQQM 或台股正2"
+    },
+    {
+      "code": "QQQM",
+      "name": "Invesco Nasdaq100 (lower fee)",
+      "market": "US",
+      "role": "growth_alt",
+      "note": "與 QQQ 同指數、費用較低；二擇一即可"
     }
   ],
+  "approved_universe": {
+    "mode": "med_low_core_plus_growth_sleeve",
+    "deployable_twd": 1000000,
+    "buy_allowed": [
+      {
+        "id": "0050",
+        "venue": "TW",
+        "risk": "med_low",
+        "sleeve": "core",
+        "why": "台股CP主軸"
+      },
+      {
+        "id": "BOT_GOLD",
+        "venue": "BOT",
+        "risk": "low_med",
+        "sleeve": "hedge",
+        "why": "避險分批；評等 B+，優先 A/S"
+      },
+      {
+        "id": "VOO",
+        "venue": "IB",
+        "risk": "med",
+        "sleeve": "core",
+        "why": "美股底倉"
+      },
+      {
+        "id": "VXUS",
+        "venue": "IB",
+        "risk": "med",
+        "sleeve": "core",
+        "why": "非美分散；VOO:VXUS≈7:3"
+      },
+      {
+        "id": "QQQ",
+        "venue": "IB",
+        "risk": "med_high",
+        "sleeve": "growth",
+        "why": "衝報酬用的成長衛星；小於 VOO",
+        "equivalents": ["QQQM", "00631L"],
+        "rules": "QQQ與QQQM二擇一；與正2同屬進攻袖，合計部位要有上限"
+      },
+      {
+        "id": "00631L",
+        "venue": "TW",
+        "risk": "med_high",
+        "sleeve": "growth",
+        "why": "0050正2：台股進攻／CP高；Level3不加，年線防守",
+        "equivalents": ["QQQ", "QQQM"],
+        "rules": "與QQQ成長袖合計控管；大盤Level≥3禁止加碼"
+      },
+      {
+        "id": "USDT_EARN",
+        "venue": "Binance/BitoPro",
+        "risk": "low",
+        "sleeve": "idle",
+        "why": "既有穩定幣活期"
+      }
+    ],
+    "growth_equivalents": [
+      {
+        "id": "QQQ",
+        "risk": "med_high",
+        "note": "Nasdaq100 流動性最好、討論基準"
+      },
+      {
+        "id": "QQQM",
+        "risk": "med_high",
+        "note": "同指數費用更低，長期持有可優先於 QQQ"
+      },
+      {
+        "id": "00631L",
+        "risk": "med_high",
+        "note": "0050正2：台股同等進攻；准許加碼但僅非危機等級"
+      }
+    ],
+    "hold_only_no_add": [
+      "00687B",
+      "BTC",
+      "ETH",
+      "existing_tw_stocks"
+    ],
+    "rejected": [
+      "PDBC",
+      "USO",
+      "XLE",
+      "00635U",
+      "00682U",
+      "山寨幣加碼",
+      "個股新開倉"
+    ],
+    "note": "核心=0050/黃金/VOO/VXUS；成長袖=QQQ或QQQM＋00631L正2。原油原物料／山寨／新個股剔除。"
+  },
   "multi_asset": {
     "gold_passbook": {
+      "bank": "BOT",
       "unit": "g",
-      "qty": null,
+      "qty": 60,
+      "pricing": "TWD",
       "cost_per_g": null,
-      "approx_twd": 50000,
-      "note": "與外匯合計約10萬，待精算"
+      "approx_twd": null,
+      "note": "台銀黃金存摺 60 公克（台幣計價）；市值由報表依即時金價換算"
     },
     "forex_usd": {
-      "qty": null,
+      "bank": "BOT",
+      "qty": 19258.31,
+      "approx_twd": 619058,
       "cost_twd": null,
-      "approx_twd": 50000,
-      "note": "與黃金合計約10萬，待精算"
+      "as_of": "2026-07-14",
+      "note": "台銀外匯美金 19,258.31；約台幣 619,058（使用者對帳）"
+    },
+    "crypto_ledger": {
+      "as_of": "2026-07-14",
+      "binance": {
+        "USDT": 8687.09696535,
+        "BTC": 0.06932548,
+        "ETH": 1.43579588,
+        "USDC": 7.4368568,
+        "PEPE": 501109.9,
+        "SXT": 16.77819,
+        "BNB": 0.00024986,
+        "NOT": 10,
+        "CGPT": 0.05
+      },
+      "bitopro": {
+        "USDT": 1510.4323563,
+        "POL": 0.998
+      },
+      "note": "穩定幣合計：USDT 10,197.53 + USDC 7.44；小幣 SXT/NOT/CGPT 僅記帳"
     },
     "crypto": [
       {
         "symbol": "BTC-USD",
         "name": "Bitcoin",
-        "qty": null,
-        "cost_usd": null,
-        "approx_twd_total_crypto": 400000,
-        "note": "虛擬貨幣合計約30~50萬，待對帳；已偏高勿再加碼"
+        "qty": 0.06932548,
+        "venues": ["binance"],
+        "approx_twd_total_crypto": 650000,
+        "note": "全倉粗估含穩定幣與ETH等；已偏重（目標≤3%）勿再加碼。明細見 crypto_ledger"
       },
       {
         "symbol": "ETH-USD",
         "name": "Ethereum",
-        "qty": null,
-        "cost_usd": null
+        "qty": 1.43579588,
+        "venues": ["binance"]
+      },
+      {
+        "symbol": "USDT-USD",
+        "name": "USDT",
+        "qty": 10197.52932165,
+        "venues": ["binance", "bitopro"],
+        "note": "Binance 8687.09696535 + BitoPro 1510.4323563"
+      },
+      {
+        "symbol": "USDC-USD",
+        "name": "USDC",
+        "qty": 7.4368568,
+        "venues": ["binance"]
+      },
+      {
+        "symbol": "PEPE-USD",
+        "name": "PEPE",
+        "qty": 501109.9,
+        "venues": ["binance"]
+      },
+      {
+        "symbol": "BNB-USD",
+        "name": "BNB",
+        "qty": 0.00024986,
+        "venues": ["binance"]
+      },
+      {
+        "symbol": "POL-USD",
+        "name": "Polygon POL",
+        "qty": 0.998,
+        "venues": ["bitopro"]
+      },
+      {
+        "symbol": "SXT",
+        "name": "SXT",
+        "qty": 16.77819,
+        "venues": ["binance"],
+        "note": "無穩定 Yahoo 代號，僅記帳"
+      },
+      {
+        "symbol": "NOT",
+        "name": "NOT",
+        "qty": 10,
+        "venues": ["binance"],
+        "note": "僅記帳"
+      },
+      {
+        "symbol": "CGPT",
+        "name": "CGPT",
+        "qty": 0.05,
+        "venues": ["binance"],
+        "note": "僅記帳"
       }
     ],
     "us_etf": [],
+    "us_etf_plan": {
+      "status": "watch_only",
+      "pause_ib": true,
+      "core_pair": "VOO:VXUS=7:3",
+      "growth_sleeve": {
+        "primary": "QQQ",
+        "or_equivalent": ["QQQM", "00631L"],
+        "cap_vs_voo": "美股成長袖 < VOO；正2另計但與QQQ同屬進攻總額需控管",
+        "tw_growth": "00631L 准許加碼；Level≥3 禁止"
+      },
+      "note": "核心 VOO+VXUS；成長=QQQ/QQQM 與/或 00631L"
+    },
+    "crypto_policy": {
+      "core_only": ["BTC", "ETH"],
+      "idle_stable": {
+        "prefer": "USDT",
+        "yield_style": "cex_flexible_earn",
+        "product_hint": "幣安／BitoPro USDT 活期",
+        "note": "只處理既有穩定幣；不新增加密風險倉"
+      },
+      "usdt_usdc_convert": {
+        "default": "合併成 USDT 再丟活期",
+        "do_not_churn": "利率差很小不要來回換"
+      },
+      "add_rules": "已偏重：不加 BTC/ETH；山寨不碰"
+    },
+    "total_cash_twd": 6000000,
     "deployable_cash_twd": 1000000,
+    "cash_note": "總現金約600萬；只開放100萬。新錢只進 approved_universe.buy_allowed。",
     "pause_us_ib": true
   },
   "allocation_targets": {
-    "tw_core_0050": 0.30,
-    "tw_lev_00631L": 0.20,
-    "tw_stocks": 0.15,
-    "bonds": 0.12,
-    "gold_fx": 0.12,
-    "us_etf": 0.08,
+    "tw_core_0050": 0.35,
+    "tw_lev_00631L": 0.12,
+    "tw_stocks": 0.08,
+    "bonds": 0.10,
+    "gold_fx": 0.15,
+    "us_etf": 0.17,
     "crypto": 0.03
   },
   "force_exit_codes": []

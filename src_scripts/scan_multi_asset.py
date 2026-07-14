@@ -26,6 +26,7 @@ TARGETS_PATH = os.path.join(WORKSPACE, "config", "my_targets.json")
 
 sys.path.insert(0, os.path.join(WORKSPACE, "src_scripts"))
 from notify import notify, load_alert_rules  # noqa: E402
+from market_data import fetch_daily  # noqa: E402
 
 OZ_TO_GRAM = 31.1034768
 
@@ -35,35 +36,25 @@ GOLD_TRANCHE_CAP = 100_000
 
 
 def fetch_yahoo_history(sym: str, range_: str = "2y"):
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range={range_}"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        res = data["chart"]["result"][0]
-        meta = res["meta"]
-        closes = [c for c in res["indicators"]["quote"][0]["close"] if c is not None]
-        px = meta["regularMarketPrice"]
-        prev = closes[-2] if len(closes) >= 2 else meta.get("chartPreviousClose") or px
-        if len(closes) >= 2 and abs(closes[-1] - px) / max(px, 1e-9) < 0.002:
-            prev = closes[-2]
-        change_pct = ((px - prev) / prev) * 100 if prev else 0.0
-        if abs(change_pct) > 25 and len(closes) >= 3:
-            alt = ((px - closes[-3]) / closes[-3]) * 100
-            if abs(alt) < abs(change_pct):
-                prev, change_pct = closes[-3], alt
-        return {
-            "symbol": sym,
-            "price": px,
-            "prev": prev,
-            "change_pct": change_pct,
-            "closes": closes,
-            "ma50": sum(closes[-50:]) / 50 if len(closes) >= 50 else None,
-            "ma200": sum(closes[-200:]) / 200 if len(closes) >= 200 else None,
-        }
-    except Exception as e:
-        print(f"Yahoo {sym} fail: {e}")
+    """Compat name: Stooq/Binance first, Yahoo fallback via market_data."""
+    rows = fetch_daily(sym)
+    if len(rows) < 5:
+        print(f"market_data {sym} fail: insufficient rows")
         return None
+    closes = [r["close"] for r in rows]
+    px = closes[-1]
+    prev = closes[-2]
+    change_pct = ((px - prev) / prev) * 100 if prev else 0.0
+    return {
+        "symbol": sym,
+        "price": px,
+        "prev": prev,
+        "change_pct": change_pct,
+        "closes": closes,
+        "ma50": sum(closes[-50:]) / 50 if len(closes) >= 50 else None,
+        "ma200": sum(closes[-200:]) / 200 if len(closes) >= 200 else None,
+        "source": rows[-1].get("source"),
+    }
 
 
 def load_targets():
@@ -287,7 +278,11 @@ def main():
     if multi.get("pause_us_ib"):
         lines.append("* 目前 **暫停 IB 新資金**；以下僅觀測跌深提醒，不建議立刻匯款買入。  \n")
     us_etf_th = float(th.get("us_etf_alert_pct", -5.0))
-    for sym, name in [("VOO", "Vanguard S&P500"), ("QQQ", "Nasdaq100")]:
+    for sym, name in [
+        ("VOO", "Vanguard S&P500"),
+        ("VXUS", "Vanguard International ex-US"),
+        ("QQQ", "Nasdaq100"),
+    ]:
         q = fetch_yahoo_history(sym, "1y")
         if not q:
             continue

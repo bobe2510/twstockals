@@ -390,6 +390,23 @@ def generate_integrated_report(results, today_str):
             stop_px = r.get("low_5d")
             profit_px = r.get("ma5") if use_ma5_tp else r.get("ma10")
             add_px = None if (diag["is_etf"] and ("出清" in diag["action"] or "減碼" in diag["action"] or diag["force_exit"])) else r.get("ma10")
+            cost_px = h.get("cost")
+            roi_pct = None
+            if cost_px and diag.get("close") and float(cost_px) > 0:
+                roi_pct = (float(diag["close"]) / float(cost_px) - 1.0) * 100.0
+
+            # 讀取達標分批停利門檻（個股殘倉／非債券為主；正2用移動停利+年線）
+            try:
+                with open(os.path.join(WORKSPACE, "config", "alert_rules.json"), "r", encoding="utf-8") as _af:
+                    _th = (json.load(_af).get("thresholds") or {})
+            except Exception:
+                _th = {}
+            roi1 = float(_th.get("take_profit_roi_1", 12.0))
+            roi2 = float(_th.get("take_profit_roi_2", 25.0))
+            frac1 = float(_th.get("take_profit_roi_1_frac", 0.33))
+            frac2 = float(_th.get("take_profit_roi_2_frac", 0.33))
+            bond_like = code in ("00687B",) or "債" in str(h.get("name", ""))
+            allow_roi_tp = (not diag["force_exit"]) and (not bond_like)
 
             if diag["force_exit"] or (diag["is_etf"] and ("出清" in diag["action"] or "減碼" in diag["action"])):
                 diag["add_level_10ma"] = "⚠️ 建議減碼/不加碼"
@@ -401,10 +418,17 @@ def generate_integrated_report(results, today_str):
                 diag["add_level_20ma"] = f"**{r['ma20']:.2f} 元 (20MA) 🚀**" if "ma20" in r else "N/A"
                 diag["stop_level"] = f"**{r['low_5d']:.2f} 元 (5日低點)**" if "low_5d" in r else "N/A"
                 
+                tp_bits = []
+                if allow_roi_tp and roi_pct is not None:
+                    if roi_pct >= roi2:
+                        tp_bits.append(f"達標停利②：報酬 {roi_pct:+.1f}%≥{roi2:.0f}% → 再賣約 {frac2:.0%} 鎖定利潤")
+                    elif roi_pct >= roi1:
+                        tp_bits.append(f"達標停利①：報酬 {roi_pct:+.1f}%≥{roi1:.0f}% → 先賣約 {frac1:.0%} 鎖定利潤")
                 if use_ma5_tp:
-                    diag["profit_level"] = f"收盤價跌破 5MA ({r.get('ma5', 0):.2f} 元) 停利"
+                    tp_bits.append(f"移動停利：收盤跌破 5MA ({r.get('ma5', 0):.2f}) 賣剩餘（鎖定漲幅）")
                 else:
-                    diag["profit_level"] = f"收盤價跌破 10MA ({r.get('ma10', 0):.2f} 元) 停利"
+                    tp_bits.append(f"移動停利：收盤跌破 10MA ({r.get('ma10', 0):.2f}) 賣剩餘（鎖定漲幅）")
+                diag["profit_level"] = "<br>".join(tp_bits)
 
             levels_rows.append({
                 "code": code,
@@ -412,6 +436,8 @@ def generate_integrated_report(results, today_str):
                 "status": "portfolio",
                 "force_exit": diag["force_exit"],
                 "close": diag.get("close"),
+                "cost": cost_px,
+                "roi_pct": roi_pct,
                 "stop": stop_px,
                 "profit": profit_px,
                 "entry": None,
@@ -421,13 +447,26 @@ def generate_integrated_report(results, today_str):
                 "ma20": r.get("ma20"),
                 "low_5d": stop_px,
                 "profit_rule": "ma5" if use_ma5_tp else "ma10",
+                "allow_roi_tp": allow_roi_tp,
             })
             if diag["force_exit"]:
                 eod_actions.append(f"出清窗：{code} {diag.get('name','')} 逢彈分批出清（錯誤策略）")
             elif stop_px and diag["close"] <= stop_px:
-                eod_actions.append(f"停損：{code} 收盤 {diag['close']:.2f} ≤ 5日低 {stop_px:.2f}")
-            elif profit_px and diag["close"] < profit_px and not diag["force_exit"]:
-                eod_actions.append(f"停利檢視：{code} 收盤跌破移動停利 {profit_px:.2f}")
+                eod_actions.append(f"停損（砍虧）：{code} 收盤 {diag['close']:.2f} ≤ 5日低 {stop_px:.2f}")
+            else:
+                if allow_roi_tp and roi_pct is not None:
+                    if roi_pct >= roi2:
+                        eod_actions.append(
+                            f"達標停利②（鎖定獲利）：{code} 報酬 {roi_pct:+.1f}%≥{roi2:.0f}% → 建議再賣約 {frac2:.0%}"
+                        )
+                    elif roi_pct >= roi1:
+                        eod_actions.append(
+                            f"達標停利①（鎖定獲利）：{code} 報酬 {roi_pct:+.1f}%≥{roi1:.0f}% → 建議先賣約 {frac1:.0%}"
+                        )
+                if profit_px and diag["close"] < profit_px and not diag["force_exit"]:
+                    eod_actions.append(
+                        f"移動停利（鎖定漲幅）：{code} 收盤跌破停利線 {profit_px:.2f}（不是停損）"
+                    )
                     
             analyzed_holdings.append(diag)
         else:

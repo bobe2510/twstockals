@@ -102,19 +102,21 @@ def get_realtime_prices(symbols):
 
 
 def fetch_yahoo_quote(sym):
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=2d"
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    """Compat: use market_data (Stooq/Binance/Yahoo fallback)."""
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            res = data['chart']['result'][0]
-            meta = res['meta']
-            current_rate = meta['regularMarketPrice']
-            prev_close = meta['chartPreviousClose']
-            change_pct = ((current_rate - prev_close) / prev_close) * 100
-            return {"symbol": sym, "price": current_rate, "prev_close": prev_close, "change_pct": change_pct}
+        from market_data import fetch_quote
+        q = fetch_quote(sym)
+        if not q:
+            return None
+        return {
+            "symbol": sym,
+            "price": q["price"],
+            "prev_close": q["prev_close"],
+            "change_pct": q["change_pct"],
+            "source": q.get("source"),
+        }
     except Exception as e:
-        print(f"Yahoo {sym} 失敗: {e}")
+        print(f"quote {sym} 失敗: {e}")
         return None
 
 
@@ -157,6 +159,7 @@ def check_multi_asset_shocks(rules):
         ("BTC-USD", "Bitcoin", crypto_th, False),
         ("ETH-USD", "Ethereum", crypto_th, False),
         ("VOO", "VOO", us_etf_th, False),
+        ("VXUS", "VXUS", us_etf_th, False),
         ("QQQ", "QQQ", us_etf_th, False),
         ("USDTWD=X", "美元兌台幣", twd_th, True),
     ]

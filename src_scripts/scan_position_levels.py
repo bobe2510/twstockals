@@ -75,9 +75,26 @@ def main():
             profit = row.get("profit")
             add = row.get("add")
             if stop is not None and close <= stop:
-                actions.append(f"停損確認：{code} {name} 收盤 {close:.2f} ≤ 停損 {stop:.2f}")
-            elif profit is not None and close < profit and code not in forced:
-                actions.append(f"移動停利：{code} {name} 收盤 {close:.2f} < 停利線 {profit:.2f}")
+                actions.append(f"停損（砍虧）：{code} {name} 收盤 {close:.2f} ≤ 停損 {stop:.2f}")
+            else:
+                roi = row.get("roi_pct")
+                if row.get("allow_roi_tp") and roi is not None:
+                    roi1 = float((rules.get("thresholds") or {}).get("take_profit_roi_1", 12.0))
+                    roi2 = float((rules.get("thresholds") or {}).get("take_profit_roi_2", 25.0))
+                    frac1 = float((rules.get("thresholds") or {}).get("take_profit_roi_1_frac", 0.33))
+                    frac2 = float((rules.get("thresholds") or {}).get("take_profit_roi_2_frac", 0.33))
+                    if roi >= roi2:
+                        actions.append(
+                            f"達標停利②（鎖定獲利）：{code} {name} 報酬 {roi:+.1f}% → 再賣約 {frac2:.0%}"
+                        )
+                    elif roi >= roi1:
+                        actions.append(
+                            f"達標停利①（鎖定獲利）：{code} {name} 報酬 {roi:+.1f}% → 先賣約 {frac1:.0%}"
+                        )
+                if profit is not None and close < profit and code not in forced:
+                    actions.append(
+                        f"移動停利（鎖定漲幅）：{code} {name} 收盤 {close:.2f} < 停利線 {profit:.2f}"
+                    )
             if add is not None and near(close, add, tol) and code not in forced:
                 actions.append(f"主力加碼帶：{code} {name} 接近 10MA {add:.2f}（勿對 force_exit 加碼）")
             if code in forced:
