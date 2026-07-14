@@ -1,0 +1,81 @@
+{
+  "lambda_mdd": 0.25,
+  "lambda_ops": 1.5,
+  "eod_ops_weight": 0.2,
+  "intraday_ops_weight": 1.0,
+  "cooldown_hours": 24,
+  "ma_touch_tolerance_pct": 0.8,
+  "exit_priority_bounce_pct": 3.0,
+  "rules": {
+    "stop_5d_low": {
+      "urgency": "emergency",
+      "description": "收盤或盤中跌破5日低點停損"
+    },
+    "take_profit_ma5": {
+      "urgency": "eod_action",
+      "description": "強勢股收盤跌破5MA移動停利"
+    },
+    "take_profit_ma10": {
+      "urgency": "eod_action",
+      "description": "一般持股收盤跌破10MA移動停利"
+    },
+    "entry_ma5": {
+      "urgency": "eod_action",
+      "description": "觀測股回測5MA建倉提醒"
+    },
+    "add_ma10": {
+      "urgency": "eod_action",
+      "description": "已持有回測10MA主力加碼"
+    },
+    "macro_level": {
+      "urgency": "emergency",
+      "description": "大盤進入Level 2/3全域減碼"
+    },
+    "exit_priority": {
+      "urgency": "eod_action",
+      "description": "錯誤策略標的反彈出清窗"
+    },
+    "asset_shock": {
+      "urgency": "emergency",
+      "description": "多資產單日劇烈波動"
+    },
+    "timing_flip_200ma": {
+      "urgency": "eod_action",
+      "description": "年線多空擇時翻轉"
+    },
+    "gold_buy_zone": {
+      "urgency": "eod_action",
+      "description": "黃金存摺進入季線換算買點區"
+    },
+    "gold_add_zone": {
+      "urgency": "eod_action",
+      "description": "黃金存摺接近年線換算加碼區"
+    },
+    "btc_buy_zone": {
+      "urgency": "eod_action",
+      "description": "BTC 回測50MA衛星倉小買區（若未偏重）"
+    },
+    "fx_buy_zone": {
+      "urgency": "eod_action",
+      "description": "美元兌台幣落入年均線下方可囤匯"
+    },
+    "us_etf_shock": {
+      "urgency": "emergency",
+      "description": "美股ETF觀測急跌"
+    },
+    "us_etf_buy_zone": {
+      "urgency": "eod_action",
+      "description": "美股ETF年線下試倉區"
+    }
+  },
+  "thresholds": {
+    "taiex_alert_pct": -1.5,
+    "portfolio_alert_pct": -4.0,
+    "tracked_alert_pct": -7.0,
+    "twd_alert_pct": 0.40,
+    "us_alert_pct": -3.0,
+    "gold_alert_pct": -5.0,
+    "crypto_alert_pct": -8.0,
+    "us_etf_alert_pct": -5.0
+  }
+}

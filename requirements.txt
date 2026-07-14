@@ -1,0 +1,4 @@
+pandas>=2.0
+numpy>=1.24
+FinMind>=1.6
+requests>=2.28

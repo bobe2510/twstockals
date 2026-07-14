@@ -1,0 +1,22 @@
+# Ignore secrets and local caches
+config/api_keys.json
+reports/alert_state.json
+__pycache__/
+*.pyc
+.venv/
+venv/
+market_crawled_cache/
+*.csv
+.DS_Store
+src_scripts/_tmp_*.py
+.env
+*.pem
+*.log
+compiled_news.txt
+raw_collected_news/
+reports/latest/*.png
+reports/archive/
+
+.env
+*.pem
+config/*secrets*

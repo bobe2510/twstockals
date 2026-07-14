@@ -1,0 +1,108 @@
+{
+  "portfolio": [
+    {
+      "code": "00631L",
+      "name": "元大台灣50正2",
+      "shares": 9000,
+      "cost": 37.13
+    },
+    {
+      "code": "00687B",
+      "name": "國泰20年美債",
+      "shares": 4000,
+      "cost": 33.2
+    },
+    {
+      "code": "6191",
+      "name": "精成科",
+      "shares": 1000,
+      "cost": 102.0
+    },
+    {
+      "code": "5469",
+      "name": "瀚宇博",
+      "shares": 1000,
+      "cost": 87.5
+    },
+    {
+      "code": "2301",
+      "name": "光寶科",
+      "shares": 1000,
+      "cost": 217.67
+    },
+    {
+      "code": "3484",
+      "name": "崧騰",
+      "shares": 5000,
+      "cost": 51.82
+    }
+  ],
+  "watchlist": [
+    {
+      "code": "0050",
+      "name": "元大台灣50"
+    },
+    {
+      "code": "00635U",
+      "name": "元大S&P黃金"
+    },
+    {
+      "code": "00682U",
+      "name": "元大美元指數"
+    },
+    {
+      "code": "VOO",
+      "name": "Vanguard S&P500",
+      "market": "US"
+    },
+    {
+      "code": "QQQ",
+      "name": "Invesco Nasdaq100",
+      "market": "US"
+    }
+  ],
+  "multi_asset": {
+    "gold_passbook": {
+      "unit": "g",
+      "qty": null,
+      "cost_per_g": null,
+      "approx_twd": 50000,
+      "note": "與外匯合計約10萬，待精算"
+    },
+    "forex_usd": {
+      "qty": null,
+      "cost_twd": null,
+      "approx_twd": 50000,
+      "note": "與黃金合計約10萬，待精算"
+    },
+    "crypto": [
+      {
+        "symbol": "BTC-USD",
+        "name": "Bitcoin",
+        "qty": null,
+        "cost_usd": null,
+        "approx_twd_total_crypto": 400000,
+        "note": "虛擬貨幣合計約30~50萬，待對帳；已偏高勿再加碼"
+      },
+      {
+        "symbol": "ETH-USD",
+        "name": "Ethereum",
+        "qty": null,
+        "cost_usd": null
+      }
+    ],
+    "us_etf": [],
+    "deployable_cash_twd": 1000000,
+    "pause_us_ib": true
+  },
+  "allocation_targets": {
+    "tw_core_0050": 0.30,
+    "tw_lev_00631L": 0.20,
+    "tw_stocks": 0.15,
+    "bonds": 0.12,
+    "gold_fx": 0.12,
+    "us_etf": 0.08,
+    "crypto": 0.03
+  },
+  "force_exit_codes": []
+}
