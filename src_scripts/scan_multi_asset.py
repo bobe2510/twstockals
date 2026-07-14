@@ -194,7 +194,7 @@ def main():
     lines.append(
         f"可運用現金約 **{cash:,}** 元｜黃金預算上限約 **{GOLD_BUDGET_TWD:,}** 元（分 3 笔）  \n"
     )
-    lines.append("> 評等 D/C=觀望；B=可小買；A/S=較佳買點（仍禁止一次買滿）。  \n\n")
+    lines.append("> 評等 D/C=觀望；**B=允許小買（非必須）**；**A/S=較推薦分批**（仍禁止一次買滿）。  \n\n")
 
     if gold and usdtwd and gold.get("ma50"):
         g = grade_gold_buy(gold, usdtwd)
@@ -211,24 +211,43 @@ def main():
             f"* 短線止穩：{'是' if g['stabilized'] else '否'}"
             f"{'／仍近新低' if g['fresh_low'] else ''}  \n"
         )
-        lines.append(f"\n### 評等 **{g['grade']}**｜建議本次投入 **{g['suggest_twd']:,}** 元\n\n")
+        lines.append(f"\n### 評等 **{g['grade']}**｜")
+        if g["grade"] in ("A", "S"):
+            lines.append(f"**推薦**分批，上限 **{g['suggest_twd']:,}** 元\n\n")
+        elif g["grade"] == "B":
+            lines.append(f"**允許**小買（非必須），上限 **{g['suggest_twd']:,}** 元\n\n")
+        else:
+            lines.append(f"暫不買（**0** 元）\n\n")
         lines.append(f"{g['reason']}  \n\n")
 
         if g["grade"] in ("B", "A", "S") and g["suggest_twd"] > 0:
-            title = f"黃金評等{g['grade']}｜建議買 {g['suggest_twd']//10000} 萬"
-            msg = (
-                f"評等 {g['grade']}：建議本次買入約 **{g['suggest_twd']:,} 元**（不要超過）。\n"
-                f"{g['reason']}\n"
-                f"換算 {g['bot']:.0f} 元/g｜vs季線 {g['bias50']:+.1f}%｜vs年線 {g['bias200']:+.1f}%｜"
-                f"距高點 {g['from_peak']:+.1f}%｜止穩={'Y' if g['stabilized'] else 'N'}"
-            )
-            rule = "gold_buy_grade_a" if g["grade"] in ("A", "S") else "gold_buy_grade_b"
+            wan = g["suggest_twd"] // 10000
+            if g["grade"] in ("A", "S"):
+                title = f"黃金評等{g['grade']}｜推薦分批買（上限{wan}萬）"
+                msg = (
+                    f"評等 {g['grade']}：**推薦**可執行分批買入，本次上限約 **{g['suggest_twd']:,}** 元（不要超過）。\n"
+                    f"{g['reason']}\n"
+                    f"換算 {g['bot']:.0f} 元/g｜vs季線 {g['bias50']:+.1f}%｜vs年線 {g['bias200']:+.1f}%｜"
+                    f"距高點 {g['from_peak']:+.1f}%｜止穩={'Y' if g['stabilized'] else 'N'}"
+                )
+                rule = "gold_buy_grade_a"
+            else:
+                title = f"黃金評等B｜允許小買上限{wan}萬（非必須）"
+                msg = (
+                    f"評等 B：規則上**允許**小買，上限約 **{g['suggest_twd']:,}** 元；"
+                    f"**不是強烈推薦**，可不做。\n"
+                    f"{g['reason']}\n"
+                    f"換算 {g['bot']:.0f} 元/g｜vs季線 {g['bias50']:+.1f}%｜vs年線 {g['bias200']:+.1f}%｜"
+                    f"距高點 {g['from_peak']:+.1f}%｜止穩={'Y' if g['stabilized'] else 'N'}\n"
+                    f"（若已有黃金／外匯偏重，更傾向先按兵。）"
+                )
+                rule = "gold_buy_grade_b"
             urg = "eod_action"
             actions.append(("GOLD", rule, urg, title, msg))
         elif g["grade"] in ("C", "D"):
-            title = f"黃金評等{g['grade']}｜暫不建議買"
+            title = f"黃金評等{g['grade']}｜暫不買"
             msg = (
-                f"評等 {g['grade']}：建議本次 **0 元**。\n{g['reason']}\n"
+                f"評等 {g['grade']}：本次 **0 元**（觀望）。\n{g['reason']}\n"
                 f"換算 {g['bot']:.0f}｜距高點 {g['from_peak']:+.1f}%｜止穩={'Y' if g['stabilized'] else 'N'}"
             )
             # Only notify C/D when forced, to avoid spam — still write report
@@ -330,7 +349,7 @@ def main():
     lines.append("## 推播摘要\n\n")
     if actions:
         for _, _, urg, title, msg in actions:
-            tag = "緊急" if urg == "emergency" else "建議"
+            tag = "緊急" if urg == "emergency" else ("推薦" if "推薦" in title else ("允許" if "允許" in title else "通知"))
             lines.append(f"* [{tag}] **{title}**\n")
     else:
         lines.append("* 無推播項目。\n")

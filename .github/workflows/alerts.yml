@@ -9,11 +9,11 @@ name: twstockals-alerts
 on:
   schedule:
     # Times are UTC. Taiwan = UTC+8.
-    # Hourly rough cover for TW session 07-14 TW => 23-06 UTC
+    # Intraday TW session: ~07:05–14:05 TW (hourly) => 23:05,00:05…06:05 UTC Mon–Fri
     - cron: "5 23,0,1,2,3,4,5,6 * * 1-5"
-    # EOD digest ~14:15 TW => 06:15 UTC
+    # EOD digest ~14:15 TW => 06:15 UTC Mon–Fri
     - cron: "15 6 * * 1-5"
-    # Multi-asset evening ~20:00 TW => 12:00 UTC
+    # Multi-asset evening ~20:00 TW => 12:00 UTC daily
     - cron: "0 12 * * *"
   workflow_dispatch:
     inputs:
