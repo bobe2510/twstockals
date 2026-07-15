@@ -278,7 +278,7 @@ def main():
     actions = []
     lines = []
     window_label = "上班窗" if day_mode or (in_bank and not in_evening) else "晚間窗"
-    lines.append("# 多資產買點評等與建議金額 (Gold / FX / BTC)\n\n")
+    lines.append("# 多資產買點評等與建議金額 (Gold / FX / BTC / ETH)\n\n")
     lines.append(f"時間：{now.strftime('%Y-%m-%d %H:%M:%S')}（台北｜{window_label}）  \n")
     ladder_state = load_ladder_state()
     pool_snap = cash_pool_snapshot(ladder_state, policy)
@@ -548,6 +548,29 @@ def main():
         if btc["change_pct"] <= btc_shock:
             msg = f"BTC 急跌 {btc['change_pct']:+.2f}%（閾值 {btc_shock}%）。"
             actions.append(("BTC", "asset_shock", "emergency", "BTC 急跌警戒", msg))
+            lines.append(f"* **緊急**：{msg}  \n")
+        lines.append("\n")
+
+    eth = None if (day_mode and "--skip-btc" in sys.argv) else fetch_yahoo_history("ETH-USD")
+    if eth:
+        lines.append("## 以太坊\n\n")
+        lines.append(f"* 價格：{eth['price']:,.2f} USD ({eth['change_pct']:+.2f}%)  \n")
+        if eth.get("ma50"):
+            bias50 = (eth["price"] - eth["ma50"]) / eth["ma50"] * 100
+            lines.append(f"* 50MA：{eth['ma50']:,.2f}（乖離 {bias50:+.2f}%）  \n")
+        if eth.get("ma200"):
+            bias200 = (eth["price"] - eth["ma200"]) / eth["ma200"] * 100
+            lines.append(f"* 200MA：{eth['ma200']:,.2f}（乖離 {bias200:+.2f}%）  \n")
+        if pause_crypto_add:
+            lines.append("* **加碼：暫停**（既有部位已偏高）。建議金額 **0**。  \n")
+        if eth.get("ma50") and eth["price"] < eth["ma50"]:
+            sell_note = product_policy("ETH-USD", policy).get("sell_note") or (
+                "破 50MA 可減（既有偏重則不加碼）"
+            )
+            lines.append(f"* **出場參考**：{sell_note}  \n")
+        if eth["change_pct"] <= btc_shock:
+            msg = f"ETH 急跌 {eth['change_pct']:+.2f}%（閾值 {btc_shock}%）。"
+            actions.append(("ETH", "asset_shock", "emergency", "ETH 急跌警戒", msg))
             lines.append(f"* **緊急**：{msg}  \n")
         lines.append("\n")
 
