@@ -79,8 +79,10 @@ Classify and flag stocks based on **Foreign Ownership Ratio (外資持股比)** 
     *   Monitor Yahoo Finance `USDTWD=X` daily exchange rate.
     *   If TWD depreciates by **$\ge 0.4\%$** in a single day, trigger a warning in the report and desktop alert, indicating high risk of foreign capital flight.
 *   **Scan Window Restriction (盤中執行時間限制)**:
-    *   To conserve system resources and API usage, real-time black swan monitoring runs must only execute between **`07:00 ~ 13:59`** daily.
-    *   Any run triggered outside this window (e.g. overnight or post-market) must silently and instantly exit within milliseconds.
+    *   Black-swan scans may run in session, but **must not push individual-stock stop / support-break alerts intraday** (avoid selling into the dumb valley / 阿呆谷).
+    *   Stock defense breaks are confirmed around **13:10** (`--close-confirm`), re-checked vs **13:30** close; execute after **13:40** or next open. Freeze **09:00–09:30**.
+    *   Macro / FX / inverse-ETF (`00632R` force-exit) alerts may still notify intraday.
+    *   Runs outside the intended mode/window must exit quickly unless forced.
 *   **Hidden Execution Wrapper (VBScript)**:
     *   Deploy standard background tasks with a VBScript wrapper to suppress CMD windows (`WshShell.Run "python ...", 0, False`), allowing non-disruptive background checks in the user context.
 
