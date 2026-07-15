@@ -58,10 +58,15 @@ def apply_threshold_overrides():
 def load_targets():
     json_path = os.path.join(WORKSPACE, "config", "my_targets.json")
     if not os.path.exists(json_path):
-        return [], []
+        return [], [], set()
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    return data.get("portfolio", []), data.get("watchlist", [])
+    cleared = {
+        str(x.get("code"))
+        for x in (data.get("cleared_positions") or [])
+        if x.get("code")
+    }
+    return data.get("portfolio", []), data.get("watchlist", []), cleared
 
 
 def load_levels():
@@ -251,13 +256,33 @@ def trigger_desktop_alert(message):
     ctypes.windll.user32.MessageBoxW(0, message, "🚨 台股黑天鵝警報 🚨", 0x10 | 0x0)
 
 
-def check_stop_level_breaches(price_map, levels_doc, *, close_confirm=False):
-    """個股破防守：盤中只記錄；close_confirm 才產生可推播文案。"""
+def check_stop_level_breaches(
+    price_map,
+    levels_doc,
+    *,
+    close_confirm=False,
+    live_portfolio_codes=None,
+    cleared_codes=None,
+):
+    """個股破防守：盤中只記錄；close_confirm 才產生可推播文案。
+
+    必須與 my_targets 即時持股交集：levels.json 過期時不得對已出清標的推播。
+    """
+    # None = 未提供活持股（僅靠 cleared 過濾）；空 set = 無持股 → 全部跳過
+    live = None if live_portfolio_codes is None else set(live_portfolio_codes)
+    cleared = set(cleared_codes or [])
     alerts = []
     for row in levels_doc.get("levels") or []:
         if row.get("status") != "portfolio":
             continue
-        code = row.get("code")
+        code = str(row.get("code") or "")
+        if not code:
+            continue
+        # 活持股為準：不在 portfolio、或已列入 cleared_positions → 永不告警
+        if live is not None and code not in live:
+            continue
+        if code in cleared:
+            continue
         stop = row.get("stop") or row.get("low_5d")
         if code not in price_map or stop is None:
             continue
@@ -323,13 +348,20 @@ def main():
     print(f"開始掃描市場狀態... 基準時間: {now.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"模式: {mode_label} | 彈窗: {'開' if enable_alert_popup else '關'}")
 
-    holdings, watchlist = load_targets()
+    holdings, watchlist, cleared_codes = load_targets()
     levels_doc = load_levels()
-    force_exit_codes = set(levels_doc.get("force_exit_codes") or [])
+    # force_exit 僅對「仍持有」標的生效；已出清者不應再推
+    force_exit_codes = {
+        str(c) for c in (levels_doc.get("force_exit_codes") or [])
+        if str(c) not in cleared_codes
+    }
     for h in holdings:
         if h.get("force_exit"):
             force_exit_codes.add(h["code"])
-    reverse_like = {"00632R"} | {c for c in force_exit_codes if str(c).endswith("R")}
+    reverse_like = (
+        ({"00632R"} | {c for c in force_exit_codes if str(c).endswith("R")})
+        - cleared_codes
+    )
 
     all_codes = []
     portfolio_codes = set()
@@ -339,6 +371,8 @@ def main():
 
     for h in holdings:
         code = h["code"]
+        if code in cleared_codes:
+            continue  # 防呆：cleared 與 portfolio 同時出現時以出清為準
         all_codes.append(code)
         portfolio_codes.add(code)
         code_to_name[code] = h["name"]
@@ -421,7 +455,11 @@ def main():
             continue
 
     stop_alerts = check_stop_level_breaches(
-        price_map, levels_doc, close_confirm=close_confirm
+        price_map,
+        levels_doc,
+        close_confirm=close_confirm,
+        live_portfolio_codes=portfolio_codes,
+        cleared_codes=cleared_codes,
     ) if price_map else []
     us_indicators = check_us_market_indicators()
     us_alerts = [x["message"] for x in us_indicators if x["is_warning"] and x["message"]]

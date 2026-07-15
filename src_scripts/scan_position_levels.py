@@ -34,6 +34,28 @@ def load_levels():
         return json.load(f)
 
 
+def load_live_holdings():
+    """即時持股／已出清集合，避免過期 levels.json 對已賣光標的再推播。"""
+    path = os.path.join(WORKSPACE, "config", "my_targets.json")
+    if not os.path.exists(path):
+        return set(), set()
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    portfolio = {
+        str(h.get("code"))
+        for h in (data.get("portfolio") or [])
+        if h.get("code")
+    }
+    cleared = {
+        str(x.get("code"))
+        for x in (data.get("cleared_positions") or [])
+        if x.get("code")
+    }
+    # cleared 優先：同時出現時視為已出清
+    portfolio -= cleared
+    return portfolio, cleared
+
+
 def near(price, level, tol_pct):
     if price is None or level is None or level == 0:
         return False
@@ -53,17 +75,43 @@ def main():
         print(f"找不到 {LEVELS_PATH}，請先跑 analyze_portfolio_deep / market_screener。")
         sys.exit(1)
 
+    live_portfolio, cleared_codes = load_live_holdings()
     rules = load_alert_rules()
     tol = float(rules.get("ma_touch_tolerance_pct", 0.8))
     bounce = float(rules.get("exit_priority_bounce_pct", 3.0))
 
-    actions = list(levels_doc.get("eod_actions") or [])
-    forced = set(levels_doc.get("force_exit_codes") or [])
+    # 過濾過期 eod_actions：只保留仍持有／非 cleared 的個股相關列（保留大盤／年線等）
+    raw_actions = list(levels_doc.get("eod_actions") or [])
+    actions = []
+    for a in raw_actions:
+        skip = False
+        for z in cleared_codes:
+            if z and z in a:
+                skip = True
+                break
+        if skip:
+            continue
+        # 若動作提到具體持股代號且不在活持股，略過（保留無代號的總經句）
+        mentioned = None
+        for row in levels_doc.get("levels") or []:
+            c = str(row.get("code") or "")
+            if c and c in a and row.get("status") == "portfolio":
+                mentioned = c
+                break
+        if mentioned and live_portfolio and mentioned not in live_portfolio:
+            continue
+        actions.append(a)
+
+    forced = {
+        str(c)
+        for c in (levels_doc.get("force_exit_codes") or [])
+        if str(c) not in cleared_codes and (not live_portfolio or str(c) in live_portfolio)
+    }
     macro = levels_doc.get("macro_level", 1)
     cp_name = levels_doc.get("cp_best_strategy") or "（尚未回測）"
 
     for row in levels_doc.get("levels") or []:
-        code = row.get("code")
+        code = str(row.get("code") or "")
         name = row.get("name", "")
         status = row.get("status")
         close = row.get("close")
@@ -71,6 +119,10 @@ def main():
             continue
 
         if status == "portfolio":
+            if code in cleared_codes:
+                continue
+            if code not in live_portfolio:
+                continue
             stop = row.get("stop") or row.get("low_5d")
             profit = row.get("profit")
             add = row.get("add")
