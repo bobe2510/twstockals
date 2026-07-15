@@ -72,7 +72,7 @@
   ],
   "approved_universe": {
     "mode": "med_low_core_plus_growth_sleeve",
-    "deployable_twd": 1000000,
+    "deployable_twd": 2000000,
     "buy_allowed": [
       {
         "id": "0050",
@@ -86,7 +86,7 @@
         "venue": "BOT",
         "risk": "low_med",
         "sleeve": "hedge",
-        "why": "避險分批；評等 B+，優先 A/S"
+        "why": "避險分批；≥B 請買進、A/S 較推薦；自新增200萬中黃金新投入上限約60萬、每筆約24萬（既有公克另計）"
       },
       {
         "id": "VOO",
@@ -179,7 +179,7 @@
       "pricing": "TWD",
       "cost_per_g": null,
       "approx_twd": null,
-      "note": "台銀黃金存摺 60 公克（台幣計價）；市值由報表依即時金價換算"
+      "note": "台銀黃金存摺既有 60 公克另計；budget_twd=自新增現金可再投入黃金的上限（不扣既有市值）"
     },
     "forex_usd": {
       "bank": "BOT",
@@ -305,8 +305,8 @@
       "add_rules": "已偏重：不加 BTC/ETH；山寨不碰"
     },
     "total_cash_twd": 6000000,
-    "deployable_cash_twd": 1000000,
-    "cash_note": "總現金約600萬；只開放100萬。新錢只進 approved_universe.buy_allowed。",
+    "deployable_cash_twd": 2000000,
+    "cash_note": "總現金水位另計；既有持股／存摺已投資。deployable_cash_twd=200萬＝可再投入各核准商品的「新增現金」，不含已持有市值。其中約25%為機會準備金（USDTWD／VOO／VXUS），其餘常態池；推播顯示剩餘機會金。新錢只進 approved_universe.buy_allowed。",
     "pause_us_ib": true
   },
   "allocation_targets": {

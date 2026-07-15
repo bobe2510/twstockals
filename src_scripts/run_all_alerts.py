@@ -6,8 +6,9 @@ Modes:
   --mode all            black_swan + close_confirm + position_levels + multi_asset
   --mode intraday       black_swan only（大盤／匯率／反1；不推個股破防守）
   --mode close_confirm  ~13:10 近收盤確認破防守 + 提早 EOD + 觀測評等
-  --mode eod            position_levels only
-  --mode multi          gold / FX / BTC / US ETF + 觀測評等
+  --mode eod            position_levels + 觀測評等（≥門檻請買進）
+  --mode multi_day      上班窗：黃金／外匯（台銀可執行）
+  --mode multi          晚間：黃金複核 + BTC + 美股觀測 + 觀測評等
 """
 from __future__ import annotations
 
@@ -35,7 +36,6 @@ def run_script(name: str, extra_args: list[str]) -> int:
     env = os.environ.copy()
     env["TWSTOCKALS_WORKSPACE"] = ROOT
     env["PYTHONPATH"] = SCRIPTS + os.pathsep + env.get("PYTHONPATH", "")
-    # 同一輪排程只推一封整合摘要，避免 Telegram 轟炸
     env["TWSTOCKALS_BATCH_NOTIFY"] = "1"
     proc = subprocess.run(cmd, cwd=ROOT, env=env)
     print(f"=== EXIT {name} code={proc.returncode} ===")
@@ -46,7 +46,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["all", "intraday", "close_confirm", "eod", "multi"],
+        choices=["all", "intraday", "close_confirm", "eod", "multi", "multi_day"],
         default="all",
     )
     parser.add_argument("--force", action="store_true", help="Pass --force to child scripts")
@@ -54,7 +54,10 @@ def main():
     parser.add_argument("--no-popup", action="store_true", default=True)
     args = parser.parse_args()
 
-    print(f"run_all_alerts mode={args.mode} at {taiwan_now().isoformat(timespec='seconds')} (Asia/Taipei)")
+    print(
+        f"run_all_alerts mode={args.mode} at "
+        f"{taiwan_now().isoformat(timespec='seconds')} (Asia/Taipei)"
+    )
     print(f"workspace={ROOT}")
 
     clear_notify_batch()
@@ -96,6 +99,19 @@ def main():
         if "--force" not in eargs:
             eargs.append("--force")
         codes.append(run_script("scan_position_levels.py", eargs))
+        # 14:20 左右：台股 ETF ≥門檻請買進
+        wargs = list(common)
+        if "--force" not in wargs:
+            wargs.append("--force")
+        codes.append(run_script("scan_watch_grades.py", wargs))
+
+    if args.mode == "multi_day":
+        margs = list(common)
+        if "--force" not in margs:
+            margs.append("--force")
+        margs.append("--day")
+        margs.append("--skip-btc")
+        codes.append(run_script("scan_multi_asset.py", margs))
 
     if args.mode in ("all", "multi"):
         margs = list(common)
@@ -113,8 +129,9 @@ def main():
     mode_titles = {
         "intraday": f"盤中摘要 {tw.strftime('%m/%d %H:%M')}（台北）",
         "close_confirm": f"收盤確認 {tw.strftime('%m/%d %H:%M')}（台北）",
-        "eod": f"收盤執行 {tw.strftime('%m/%d')}（台北）",
-        "multi": f"多資產晚報 {tw.strftime('%m/%d')}（台北）",
+        "eod": f"收盤執行 {tw.strftime('%m/%d %H:%M')}（台北）",
+        "multi_day": f"多資產上班窗 {tw.strftime('%m/%d %H:%M')}（台北）",
+        "multi": f"多資產晚報 {tw.strftime('%m/%d %H:%M')}（台北）",
         "all": f"警報整合 {tw.strftime('%m/%d %H:%M')}（台北）",
     }
     flush_notify_batch(

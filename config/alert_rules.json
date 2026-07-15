@@ -71,6 +71,18 @@
       "urgency": "eod_action",
       "description": "黃金存摺進入季線換算買點區"
     },
+    "gold_buy_grade_b": {
+      "urgency": "eod_action",
+      "description": "黃金≥門檻請買進"
+    },
+    "gold_buy_grade_a": {
+      "urgency": "eod_action",
+      "description": "黃金高於門檻較推薦"
+    },
+    "gold_sell_zone": {
+      "urgency": "eod_action",
+      "description": "黃金站回50MA可減／暫不加"
+    },
     "gold_add_zone": {
       "urgency": "eod_action",
       "description": "黃金存摺接近年線換算加碼區"
@@ -81,7 +93,11 @@
     },
     "fx_buy_zone": {
       "urgency": "eod_action",
-      "description": "美元兌台幣落入年均線下方可囤匯"
+      "description": "美元兌台幣達門檻可囤匯"
+    },
+    "fx_sell_zone": {
+      "urgency": "eod_action",
+      "description": "美元偏強暫不囤匯"
     },
     "us_etf_shock": {
       "urgency": "emergency",

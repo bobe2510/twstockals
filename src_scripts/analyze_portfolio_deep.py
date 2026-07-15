@@ -9,6 +9,15 @@ try:
 except Exception:
     pass
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+from holding_rules import (  # noqa: E402
+    REJECTED_BUY_CODES,
+    core_etf_eod_actions,
+    core_etf_hold_text,
+    is_core_etf,
+    uses_stock_stop_rules,
+)
+
 WORKSPACE = r"g:\我的雲端硬碟\dev\twstockals"
 REPORT_PATH = os.path.join(WORKSPACE, "reports", "latest", "portfolio_and_watchlist.md")
 
@@ -30,9 +39,9 @@ STRATEGIES = {
         "detail": "【反向槓桿陷阱】反1因期貨轉倉成本與每日複利損耗，淨值會天天流失。即使大盤暴跌，也極難回本至 {cost:.2f} 元。建議趁大盤出現短期回檔、反1反彈時，果斷割肉收回資金，轉投高效率資產。"
     },
     "00687B": {
-        "action": "無須停損，放著領息",
-        "one_sentence": "【放著領息】降息只是時間問題，當作資產避風港，穩收 4.5% 配息並靜待債價反彈。",
-        "detail": "長天期美債有穩定配息，且降息只是時間問題，債價有絕對下限。當作資產避風港，靜待降息循環啟動即可。"
+        "action": "長期逢彈出清",
+        "one_sentence": "【逢彈出清】長天期美債改防禦結構；帳面 {roi:.2f}% 不砍低，反彈分批賣，資金轉現金／美金／黃金。",
+        "detail": "長債利率風險大，防禦改現金、台銀美金、黃金存摺更穩。不加碼、不攤平；有反彈就減碼，目標債券占比歸零。"
     },
     "00752": {
         "action": "逢彈減碼/出清",
@@ -407,28 +416,45 @@ def generate_integrated_report(results, today_str):
             frac2 = float(_th.get("take_profit_roi_2_frac", 0.33))
             bond_like = code in ("00687B",) or "債" in str(h.get("name", ""))
             allow_roi_tp = (not diag["force_exit"]) and (not bond_like)
+            core_etf = is_core_etf(code, h.get("name", "")) and not diag["force_exit"]
+            stock_rules = uses_stock_stop_rules(
+                code, h.get("name", ""), force_exit=diag["force_exit"]
+            )
 
             if diag["force_exit"] or (diag["is_etf"] and ("出清" in diag["action"] or "減碼" in diag["action"])):
                 diag["add_level_10ma"] = "⚠️ 建議減碼/不加碼"
                 diag["add_level_20ma"] = "N/A"
                 diag["stop_level"] = f"**{stop_px:.2f} 元 (5日低點)**" if stop_px else "N/A"
                 diag["profit_level"] = "逢彈出清/減碼"
+            elif core_etf:
+                diag["add_level_10ma"] = "—（ETF 看 Level／年線）"
+                diag["add_level_20ma"] = "—"
+                diag["stop_level"] = "—（非5日低停損）"
+                diag["profit_level"] = core_etf_hold_text(code)
             else:
                 diag["add_level_10ma"] = f"**{r['ma10']:.2f} 元 (10MA) 🌟**" if "ma10" in r else "N/A"
                 diag["add_level_20ma"] = f"**{r['ma20']:.2f} 元 (20MA) 🚀**" if "ma20" in r else "N/A"
                 diag["stop_level"] = f"**{r['low_5d']:.2f} 元 (5日低點)**" if "low_5d" in r else "N/A"
                 
                 tp_bits = []
+                holding_profit = roi_pct is not None and roi_pct > 0
                 if allow_roi_tp and roi_pct is not None:
                     if roi_pct >= roi2:
                         tp_bits.append(f"達標停利②：報酬 {roi_pct:+.1f}%≥{roi2:.0f}% → 再賣約 {frac2:.0%} 鎖定利潤")
                     elif roi_pct >= roi1:
                         tp_bits.append(f"達標停利①：報酬 {roi_pct:+.1f}%≥{roi1:.0f}% → 先賣約 {frac1:.0%} 鎖定利潤")
-                if use_ma5_tp:
-                    tp_bits.append(f"移動停利：收盤跌破 5MA ({r.get('ma5', 0):.2f}) 賣剩餘（鎖定漲幅）")
+                if holding_profit:
+                    if use_ma5_tp:
+                        tp_bits.append(f"移動停利：收盤跌破 5MA ({r.get('ma5', 0):.2f}) 賣剩餘（鎖定漲幅）")
+                    else:
+                        tp_bits.append(f"移動停利：收盤跌破 10MA ({r.get('ma10', 0):.2f}) 賣剩餘（鎖定漲幅）")
+                elif roi_pct is not None:
+                    tp_bits.append(
+                        f"套牢續抱（報酬 {roi_pct:+.1f}%）：以停損守備為準，均線跌破非停利訊號"
+                    )
                 else:
-                    tp_bits.append(f"移動停利：收盤跌破 10MA ({r.get('ma10', 0):.2f}) 賣剩餘（鎖定漲幅）")
-                diag["profit_level"] = "<br>".join(tp_bits)
+                    tp_bits.append("以停損守備為準")
+                diag["profit_level"] = "<br>".join(tp_bits) if tp_bits else "以停損守備為準"
 
             levels_rows.append({
                 "code": code,
@@ -438,22 +464,22 @@ def generate_integrated_report(results, today_str):
                 "close": diag.get("close"),
                 "cost": cost_px,
                 "roi_pct": roi_pct,
-                "stop": stop_px,
-                "profit": profit_px,
+                "stop": stop_px if stock_rules else None,
+                "profit": profit_px if stock_rules else None,
                 "entry": None,
-                "add": add_px,
+                "add": add_px if stock_rules else None,
                 "ma5": r.get("ma5"),
                 "ma10": r.get("ma10"),
                 "ma20": r.get("ma20"),
-                "low_5d": stop_px,
-                "profit_rule": "ma5" if use_ma5_tp else "ma10",
-                "allow_roi_tp": allow_roi_tp,
+                "low_5d": stop_px if stock_rules else None,
+                "profit_rule": "etf_core" if core_etf else ("ma5" if use_ma5_tp else "ma10"),
+                "allow_roi_tp": allow_roi_tp and stock_rules,
             })
             if diag["force_exit"]:
                 eod_actions.append(f"出清窗：{code} {diag.get('name','')} 逢彈分批出清（錯誤策略）")
-            elif stop_px and diag["close"] <= stop_px:
+            elif stock_rules and stop_px and diag["close"] <= stop_px:
                 eod_actions.append(f"停損（砍虧）：{code} 收盤 {diag['close']:.2f} ≤ 5日低 {stop_px:.2f}")
-            else:
+            elif stock_rules:
                 if allow_roi_tp and roi_pct is not None:
                     if roi_pct >= roi2:
                         eod_actions.append(
@@ -463,19 +489,30 @@ def generate_integrated_report(results, today_str):
                         eod_actions.append(
                             f"達標停利①（鎖定獲利）：{code} 報酬 {roi_pct:+.1f}%≥{roi1:.0f}% → 建議先賣約 {frac1:.0%}"
                         )
-                if profit_px and diag["close"] < profit_px and not diag["force_exit"]:
+                if (
+                    profit_px
+                    and diag["close"] < profit_px
+                    and not diag["force_exit"]
+                    and roi_pct is not None
+                    and roi_pct > 0
+                ):
                     eod_actions.append(
-                        f"移動停利（鎖定漲幅）：{code} 收盤跌破停利線 {profit_px:.2f}（不是停損）"
+                        f"停利檢視：{code} 報酬 {roi_pct:+.1f}% 收盤跌破移動停利 {profit_px:.2f}"
                     )
                     
             analyzed_holdings.append(diag)
         else:
             print(f"  ⚠️ 持股 {code} 未出現在全市場行情快取中，略過診斷。")
 
-    # 2. 處理觀察股（僅台股市場）
+    # 2. 處理觀察股（僅台股市場；剔除 rejected）
+    rejected = set((targets.get("approved_universe") or {}).get("rejected") or []) | set(
+        REJECTED_BUY_CODES
+    )
     analyzed_watchlist = []
     for w in tw_watchlist:
         code = w["code"]
+        if str(code) in rejected:
+            continue
         r = results_map.get(code)
         
         if r:
@@ -775,8 +812,12 @@ def generate_integrated_report(results, today_str):
             pnl_str = f"+{r['pnl']:,.0f}" if r['pnl'] >= 0 else f"{r['pnl']:,.0f}"
             roi_str = f"+{r['roi']:.2f}%" if r['roi'] >= 0 else f"{r['roi']:.2f}%"
             cap_type = "🚨 外資主導" if r["foreign_ratio"] >= 40.0 else "✅ 內資主導" if r["foreign_ratio"] <= 15.0 else "中等"
-            sl_val = f"{r['low_5d']:.2f}" if "low_5d" in r else "-"
-            tp_val = f"{r['ma5']:.2f}" if "ma5" in r else "-"
+            if is_core_etf(r["code"], r.get("name", "")) and not r.get("force_exit"):
+                sl_val = "—"
+                tp_val = "年線/Level"
+            else:
+                sl_val = f"{r['low_5d']:.2f}" if "low_5d" in r else "-"
+                tp_val = f"{r['ma5']:.2f}" if "ma5" in r else "-"
             name_flag = f"**{r['name']}**" + (" ⚠️出清" if r.get("force_exit") else "")
             f.write(f"| `{r['code']}` | {name_flag} | {r['shares']:,} | {r['cost_basis']:,.0f} | {r['close']:.2f} | **{sl_val}** | **{tp_val}** | **{pnl_str}** | **{roi_str}** | {r['foreign_ratio']:.2f}% | {r['ma_alignment']} | {r['kd_status']} | {cap_type} |\n")
             
@@ -883,7 +924,7 @@ def generate_integrated_report(results, today_str):
                 reverse_advice = "大盤處於空頭，反1可作為短線避險，但因為每日期貨轉倉成本和槓桿耗損，仍不宜死抱。建議待大盤隨波段震盪暴跌、反1衝高時逢高套現出清。"
                 core_0050_advice = "年線空頭期優先保留現金與 0050 防禦底倉，暫停正2 加碼。"
                 
-            bond_advice = "降息長線趨勢不變，作為高殖利率與防禦性資產，建議在年線之下大盤弱勢時，作為安全資金避風港放著領息，穩健續抱。"
+            bond_advice = "長天期美債改「長期逢彈出清」：不加碼；反彈分批賣，資金轉現金／台銀美金／黃金。不砍在短線低點。"
             
             f.write("\n## ⚖️ 4. 核心資產 ETF 擇時與資金配置指南 (ETF Trend Timing)\n\n")
             f.write("本指南套用 **200MA (年線) 與 50MA (季線) 擇時規章**，並以 CP 值選優結果作為主力倉依據：\n\n")
@@ -1018,6 +1059,41 @@ def generate_integrated_report(results, today_str):
             
     # Write levels.json for intraday / EOD scanners
     macro_level = 3 if is_bearish else (2 if is_preemptive else 1)
+    above_200 = None
+    if taiex_r and taiex_r.get("ma200"):
+        above_200 = float(taiex_r["close"]) > float(taiex_r["ma200"])
+
+    etf_codes = {
+        str(r["code"]) for r in levels_rows if r.get("profit_rule") == "etf_core"
+    }
+    if etf_codes:
+        eod_actions = [
+            a
+            for a in eod_actions
+            if not any(
+                ec in a and ("停利" in a or "停損" in a or "移動停利" in a)
+                for ec in etf_codes
+            )
+        ]
+        for row in levels_rows:
+            if row.get("profit_rule") != "etf_core":
+                continue
+            code = str(row.get("code"))
+            eod_actions.extend(
+                core_etf_eod_actions(
+                    code,
+                    row.get("name", ""),
+                    macro_level=macro_level,
+                    above_200ma=above_200,
+                    close=row.get("close"),
+                    cost=row.get("cost"),
+                    roi_pct=row.get("roi_pct"),
+                    ma5=row.get("ma5"),
+                    ma10=row.get("ma10"),
+                    ma20=row.get("ma20"),
+                )
+            )
+
     write_levels_json({
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "as_of": latest_date_str,

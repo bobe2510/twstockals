@@ -1,0 +1,201 @@
+{
+  "version": 4,
+  "source": "grade_threshold_backtest + grade_ladder_backtest 2026-07-15; amounts for +200萬新增可投資現金（既有持倉外）",
+  "note": "deployable=既有投資之外可再投入的現金。報告維持真實 D/C/B/A/S；推播僅 grade≥buy_min_grade。sizing=ladder 時依 deploy_ladder_state 只推下一階（進場／加碼）；flat 升級只改語氣不加碼。現金分常態池／機會池（見 cash_pools）；GOLD.budget_twd=自新增現金可再買黃金的上限（不扣既有公克市值）。",
+  "deployable_cash_twd": 2000000,
+  "cash_pools": {
+    "note": "常態池＝常觸發商品；機會池＝稀有訊號（美金A／VOO·VXUS S）。推播顯示剩餘機會金。",
+    "opportunity_share": 0.25,
+    "routine_codes": ["GOLD", "0050", "00631L", "QQQ", "QQQM"],
+    "opportunity_codes": ["USDTWD", "VOO", "VXUS"]
+  },
+  "grade_rank": {
+    "D": 0,
+    "C": 1,
+    "B": 2,
+    "A": 3,
+    "S": 4
+  },
+  "products": {
+    "GOLD": {
+      "name": "黃金存摺",
+      "buy_min_grade": "B",
+      "budget_twd": 600000,
+      "budget_scope": "new_capital_only",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 240000,
+        "A": 240000,
+        "S": 240000
+      },
+      "sell_rule": "gold_above_50ma",
+      "sell_note": "國際金價站回 50MA → 可減／暫不加",
+      "push_windows": [
+        "multi_day",
+        "multi"
+      ],
+      "venue": "BOT",
+      "sizing": "flat"
+    },
+    "USDTWD": {
+      "name": "美金外匯",
+      "buy_min_grade": "A",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 0,
+        "A": 100000,
+        "S": 100000
+      },
+      "sell_rule": "fx_strong_bias",
+      "sell_note": "乖離年線 ≥+1.5% → 暫不囤匯／可減",
+      "push_windows": [
+        "multi_day",
+        "multi"
+      ],
+      "venue": "BOT",
+      "sizing": "flat"
+    },
+    "BTC-USD": {
+      "name": "Bitcoin",
+      "buy_min_grade": "A",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 0,
+        "A": 0,
+        "S": 0
+      },
+      "pause_add_default": true,
+      "sell_rule": "below_50ma",
+      "sell_note": "破 50MA 可減（既有偏重則不加碼）",
+      "push_windows": [
+        "multi"
+      ],
+      "venue": "CEX"
+    },
+    "0050": {
+      "name": "元大台灣50",
+      "buy_min_grade": "B",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 160000,
+        "A": 160000,
+        "S": 160000
+      },
+      "sell_rule": "below_10ma",
+      "push_windows": [
+        "close_confirm",
+        "eod",
+        "multi"
+      ],
+      "venue": "TW",
+      "sizing": "flat",
+      "sizing_note": "ladder 終值僅+0.2%且A/S幾乎不觸發；改 flat 減少操作"
+    },
+    "00631L": {
+      "name": "元大台灣50正2",
+      "buy_min_grade": "B",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 120000,
+        "A": 120000,
+        "S": 120000
+      },
+      "sell_rule": "taiex_200_or_10ma",
+      "push_windows": [
+        "close_confirm",
+        "eod",
+        "multi"
+      ],
+      "venue": "TW",
+      "sizing": "flat"
+    },
+    "QQQ": {
+      "name": "Invesco Nasdaq100",
+      "buy_min_grade": "B",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 120000,
+        "A": 60000,
+        "S": 60000
+      },
+      "require_ib": true,
+      "push_windows": [
+        "multi"
+      ],
+      "venue": "IB",
+      "sizing": "ladder",
+      "ladder_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 120000,
+        "A": 60000,
+        "S": 60000
+      }
+    },
+    "QQQM": {
+      "name": "Invesco Nasdaq100 (lower fee)",
+      "buy_min_grade": "B",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 120000,
+        "A": 60000,
+        "S": 60000
+      },
+      "require_ib": true,
+      "push_windows": [
+        "multi"
+      ],
+      "venue": "IB",
+      "sizing": "ladder",
+      "ladder_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 120000,
+        "A": 60000,
+        "S": 60000
+      }
+    },
+    "VOO": {
+      "name": "Vanguard S&P500",
+      "buy_min_grade": "S",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 0,
+        "A": 0,
+        "S": 200000
+      },
+      "require_ib": true,
+      "push_windows": [
+        "multi"
+      ],
+      "venue": "IB",
+      "sizing": "flat"
+    },
+    "VXUS": {
+      "name": "Vanguard International ex-US",
+      "buy_min_grade": "S",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 0,
+        "A": 0,
+        "S": 120000
+      },
+      "require_ib": true,
+      "push_windows": [
+        "multi"
+      ],
+      "venue": "IB",
+      "sizing": "flat"
+    }
+  },
+  "ladder_backtest_at": "2026-07-15T22:26:57"
+}

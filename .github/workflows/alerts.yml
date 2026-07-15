@@ -11,18 +11,22 @@ on:
     # Times are UTC. Taiwan = UTC+8.
     # ~09:05 TW：僅大盤／匯率等（不再每小時推個股破防守）
     - cron: "5 1 * * 1-5"
+    # ~10:30 TW：多資產上班窗（黃金／外匯｜台銀可執行）
+    - cron: "30 2 * * 1-5"
     # ~13:10 TW：收盤確認破防守（避開延遲，早於 13:20）
     - cron: "10 5 * * 1-5"
     # ~13:15 TW：收盤確認備援（GitHub 排程常延遲／漏跑）
     - cron: "15 5 * * 1-5"
-    # ~14:15 TW：完整收盤執行清單（停利／停損／出清）
+    # ~14:15 TW：完整收盤執行清單 + 觀測門檻請買進
     - cron: "15 6 * * 1-5"
-    # ~20:00 TW：多資產（黃金允許／推薦用詞、匯率、BTC、美股觀測）
-    - cron: "0 12 * * *"
+    # ~15:00 TW：多資產上班窗複核（黃金／外匯）
+    - cron: "0 7 * * 1-5"
+    # ~20:30 TW：多資產晚報（黃金複核、BTC、美股觀測）
+    - cron: "30 12 * * *"
   workflow_dispatch:
     inputs:
       mode:
-        description: "all | intraday | close_confirm | eod | multi"
+        description: "all | intraday | close_confirm | eod | multi_day | multi"
         required: true
         default: "all"
 
@@ -53,13 +57,19 @@ jobs:
           if [ ! -f config/alert_rules.json ]; then
             echo '{}' > config/alert_rules.json
           fi
+          if [ ! -f config/grade_buy_policy.json ]; then
+            echo '{"products":{}}' > config/grade_buy_policy.json
+          fi
 
       - name: Restore alert state cache
         uses: actions/cache@v5
         with:
-          path: reports/alert_state.json
-          key: alert-state-v1
+          path: |
+            reports/alert_state.json
+            reports/latest/deploy_ladder_state.json
+          key: alert-state-v2-${{ github.run_id }}
           restore-keys: |
+            alert-state-v2-
             alert-state-
 
       - name: Run alerts
@@ -79,18 +89,19 @@ jobs:
         run: |
           MODE="${{ github.event.inputs.mode }}"
           if [ -z "$MODE" ]; then
-            # Prefer exact cron match so delayed runs still pick the right mode
             case "$SCHEDULE_CRON" in
               "5 1 * * 1-5") MODE=intraday ;;
+              "30 2 * * 1-5"|"0 7 * * 1-5") MODE=multi_day ;;
               "10 5 * * 1-5"|"15 5 * * 1-5") MODE=close_confirm ;;
               "15 6 * * 1-5") MODE=eod ;;
-              "0 12 * * *") MODE=multi ;;
+              "30 12 * * *") MODE=multi ;;
               *)
-                # Fallback by Taipei wall-clock (TZ=Asia/Taipei)
                 H=$(date +%H)
                 M=$(date +%M)
                 if [ "$H" = "20" ]; then
                   MODE=multi
+                elif [ "$H" = "10" ] || [ "$H" = "15" ]; then
+                  MODE=multi_day
                 elif [ "$H" = "13" ] && [ "$M" -ge 05 ] && [ "$M" -le 30 ]; then
                   MODE=close_confirm
                 elif [ "$H" = "14" ]; then
@@ -102,6 +113,7 @@ jobs:
             esac
           fi
           echo "Selected mode=$MODE schedule='${SCHEDULE_CRON:-manual}' Taipei=$(date +%H:%M) UTC=$(date -u +%H:%M)"
+          PYTHONPATH=src_scripts python -c "from tw_time import taiwan_now; import os; print('taiwan_now', taiwan_now().isoformat(), 'TZ', os.environ.get('TZ'))"
           python src_scripts/run_all_alerts.py --mode "$MODE" --force --force-notify --no-popup
 
       - name: Upload alert state artifact
@@ -109,6 +121,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: alert-state
-          path: reports/alert_state.json
+          path: |
+            reports/alert_state.json
+            reports/latest/deploy_ladder_state.json
           if-no-files-found: ignore
           retention-days: 7
