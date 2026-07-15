@@ -30,6 +30,7 @@ from holding_rules import (  # noqa: E402
 )
 from trade_levels import holding_exit_plan  # noqa: E402
 from tw_time import taiwan_now  # noqa: E402
+from eod_pending_ops import filter_core_ops, merge_pending_items  # noqa: E402
 
 
 
@@ -386,6 +387,17 @@ def main():
         urgency="eod_action",
         force=("--force-notify" in sys.argv),
     )
+    # 僅正式 EOD（≥14:00 或 --save-pending）寫入隔日 08:30 提醒；13:10 提早清單不覆蓋
+    save_pending = "--save-pending" in sys.argv or now.hour >= 14
+    if save_pending:
+        core_items = filter_core_ops(actions)
+        merge_pending_items(
+            as_of=now.strftime("%Y-%m-%d"),
+            items=core_items,
+            as_of_ts=now.isoformat(timespec="seconds"),
+            replace_same_day=True,
+        )
+        print(f"已寫 eod_pending_ops：0050／正2 操作 {len(core_items)} 項")
     print(f"EOD 清單已寫入 {EOD_REPORT_PATH}（{len(actions)} 項）")
 
 

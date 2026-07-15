@@ -6,7 +6,8 @@ Modes:
   --mode all            black_swan + close_confirm + position_levels + multi_asset
   --mode intraday       black_swan only（大盤／匯率／反1；不推個股破防守）
   --mode close_confirm  ~13:10 近收盤確認破防守 + 出清倉停損停利 + 提早 EOD + 觀測評等
-  --mode eod            position_levels + 觀測評等（≥門檻請買進）
+  --mode eod            position_levels + 觀測評等（≥門檻請買進）；寫入隔日 08:30 提醒
+  --mode preopen        ~08:30 若前一日 EOD 有 0050／正2 操作 → 開盤前提醒
   --mode multi_day      上班窗：黃金／外匯（台銀可執行）
   --mode multi          晚間：黃金複核 + BTC + 美股觀測 + 觀測評等
 """
@@ -46,7 +47,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["all", "intraday", "close_confirm", "eod", "multi", "multi_day"],
+        choices=[
+            "all",
+            "intraday",
+            "close_confirm",
+            "eod",
+            "preopen",
+            "multi",
+            "multi_day",
+        ],
         default="all",
     )
     parser.add_argument("--force", action="store_true", help="Pass --force to child scripts")
@@ -85,7 +94,6 @@ def main():
             sw.append("--force")
         sw.append("--close-confirm")
         codes.append(run_script("scan_black_swan.py", sw))
-        # 出清倉專推：只報台股打算出清的個股／ETF 停損停利
         xargs = list(common)
         if "--force" not in xargs:
             xargs.append("--force")
@@ -103,12 +111,19 @@ def main():
         eargs = list(common)
         if "--force" not in eargs:
             eargs.append("--force")
+        eargs.append("--save-pending")
         codes.append(run_script("scan_position_levels.py", eargs))
-        # 14:20 左右：台股 ETF ≥門檻請買進
         wargs = list(common)
         if "--force" not in wargs:
             wargs.append("--force")
+        wargs.append("--save-pending")
         codes.append(run_script("scan_watch_grades.py", wargs))
+
+    if args.mode == "preopen":
+        pargs = list(common)
+        if "--force" not in pargs:
+            pargs.append("--force")
+        codes.append(run_script("scan_preopen_reminder.py", pargs))
 
     if args.mode == "multi_day":
         margs = list(common)
@@ -135,6 +150,7 @@ def main():
         "intraday": f"盤中摘要 {tw.strftime('%m/%d %H:%M')}（台北）",
         "close_confirm": f"收盤確認 {tw.strftime('%m/%d %H:%M')}（台北）",
         "eod": f"收盤執行 {tw.strftime('%m/%d %H:%M')}（台北）",
+        "preopen": f"開盤前提醒 {tw.strftime('%m/%d %H:%M')}（台北）",
         "multi_day": f"多資產上班窗 {tw.strftime('%m/%d %H:%M')}（台北）",
         "multi": f"多資產晚報 {tw.strftime('%m/%d %H:%M')}（台北）",
         "all": f"警報整合 {tw.strftime('%m/%d %H:%M')}（台北）",

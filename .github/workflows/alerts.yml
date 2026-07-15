@@ -9,6 +9,8 @@ name: twstockals-alerts
 on:
   schedule:
     # Times are UTC. Taiwan = UTC+8.
+    # ~08:30 TW：若前一日 EOD 有 0050／正2 操作 → 開盤前提醒
+    - cron: "30 0 * * 1-5"
     # ~09:05 TW：僅大盤／匯率等（不再每小時推個股破防守）
     - cron: "5 1 * * 1-5"
     # ~10:30 TW：多資產上班窗（黃金／外匯｜台銀可執行）
@@ -26,7 +28,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "all | intraday | close_confirm | eod | multi_day | multi"
+        description: "all | preopen | intraday | close_confirm | eod | multi_day | multi"
         required: true
         default: "all"
 
@@ -67,6 +69,7 @@ jobs:
           path: |
             reports/alert_state.json
             reports/latest/deploy_ladder_state.json
+            reports/latest/eod_pending_ops.json
           key: alert-state-v2-${{ github.run_id }}
           restore-keys: |
             alert-state-v2-
@@ -90,6 +93,7 @@ jobs:
           MODE="${{ github.event.inputs.mode }}"
           if [ -z "$MODE" ]; then
             case "$SCHEDULE_CRON" in
+              "30 0 * * 1-5") MODE=preopen ;;
               "5 1 * * 1-5") MODE=intraday ;;
               "30 2 * * 1-5"|"0 7 * * 1-5") MODE=multi_day ;;
               "10 5 * * 1-5"|"15 5 * * 1-5") MODE=close_confirm ;;
@@ -98,7 +102,9 @@ jobs:
               *)
                 H=$(date +%H)
                 M=$(date +%M)
-                if [ "$H" = "20" ]; then
+                if [ "$H" = "08" ]; then
+                  MODE=preopen
+                elif [ "$H" = "20" ]; then
                   MODE=multi
                 elif [ "$H" = "10" ] || [ "$H" = "15" ]; then
                   MODE=multi_day
@@ -124,5 +130,6 @@ jobs:
           path: |
             reports/alert_state.json
             reports/latest/deploy_ladder_state.json
+            reports/latest/eod_pending_ops.json
           if-no-files-found: ignore
           retention-days: 7

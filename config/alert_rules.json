@@ -27,6 +27,10 @@
       "urgency": "eod_action",
       "description": "約13:10：台股出清倉（個股殘倉／美債等）停損停利操作狀況"
     },
+    "preopen_core_ops": {
+      "urgency": "eod_action",
+      "description": "約08:30：前一日 EOD 有 0050／正2 建議操作則開盤前提醒"
+    },
     "watch_grade_b": {
       "urgency": "eod_action",
       "description": "觀測評等B＝允許小買（非必須）"

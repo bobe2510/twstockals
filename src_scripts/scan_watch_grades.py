@@ -42,6 +42,7 @@ from grade_buy_policy import (  # noqa: E402
     record_ladder_fill,
     reset_ladder_cycle,
 )
+from eod_pending_ops import append_watch_ops  # noqa: E402
 
 
 def load_targets():
@@ -560,6 +561,16 @@ def main():
             ladder_state = record_ladder_fill(
                 code, g["grade"], g["suggest_twd"], action, state=ladder_state
             )
+            # 0050／正2 進場／加碼 → 寫入隔日 08:30 提醒（僅正式 EOD 時段）
+            if code in ("0050", "00631L") and (
+                "--save-pending" in sys.argv or now.hour >= 14
+            ):
+                append_watch_ops(
+                    now.strftime("%Y-%m-%d"),
+                    code,
+                    f"{title}｜{msg.split(chr(10))[0][:120]}",
+                    as_of_ts=now.isoformat(timespec="seconds"),
+                )
     if pause_ib:
         lines.append("## IB 狀態\n\n")
         lines.append(
