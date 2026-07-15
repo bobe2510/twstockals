@@ -5,9 +5,9 @@ Unified alert runner for cloud / local cron.
 Modes:
   --mode all            black_swan + close_confirm + position_levels + multi_asset
   --mode intraday       black_swan only（大盤／匯率／反1；不推個股破防守）
-  --mode close_confirm  ~13:10 近收盤確認破防守 + 提早 EOD 清單
+  --mode close_confirm  ~13:10 近收盤確認破防守 + 提早 EOD + 觀測評等
   --mode eod            position_levels only
-  --mode multi          gold / FX / BTC / US ETF watch
+  --mode multi          gold / FX / BTC / US ETF + 觀測評等
 """
 from __future__ import annotations
 
@@ -80,6 +80,10 @@ def main():
         if "--force" not in eargs:
             eargs.append("--force")
         codes.append(run_script("scan_position_levels.py", eargs))
+        wargs = list(common)
+        if "--force" not in wargs:
+            wargs.append("--force")
+        codes.append(run_script("scan_watch_grades.py", wargs))
 
     if args.mode in ("all", "eod"):
         eargs = list(common)
@@ -92,6 +96,10 @@ def main():
         if "--force" not in margs:
             margs.append("--force")
         codes.append(run_script("scan_multi_asset.py", margs))
+        wargs = list(common)
+        if "--force" not in wargs:
+            wargs.append("--force")
+        codes.append(run_script("scan_watch_grades.py", wargs))
 
     bad = [c for c in codes if c not in (0, None)]
     sys.exit(1 if bad else 0)
