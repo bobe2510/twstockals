@@ -26,7 +26,14 @@
 ---
 
 ### 3. 🚨 盤中緊急防禦：`scan_black_swan.py`
-*   **功能**：盤中僅處理**緊急**事件（大盤／持股急跌、停損觸價、匯率、多資產劇震），並 Telegram+Email 推播。
+*   **功能**：盤中推 **大盤／匯率／反1出清類**；**個股破防守不盤中推**（避免阿呆谷）。
+*   **收盤確認**：`--close-confirm`（約 13:10）才推個股破防守；請再對 13:30 收盤執行。
+*   排程建議：09:05 macro｜13:10 close_confirm｜14:15 eod。
+*   手動：
+    ```bash
+    python src_scripts/scan_black_swan.py --force --no-popup
+    python src_scripts/scan_black_swan.py --force --close-confirm --no-popup
+    ```
 *   **參數**：
     *   `--force`：略過時段限制
     *   `--no-popup`：不彈 Windows 視窗（排程建議）
@@ -63,7 +70,7 @@
 
 ## 6. 📣 通知模組：`notify.py` + 雲端排程
 *   Telegram + Email；支援 `config/api_keys.json` 或環境變數（GitHub Secrets）。
-*   統一入口：`python src_scripts/run_all_alerts.py --mode all|intraday|eod|multi --force`
+*   統一入口：`python src_scripts/run_all_alerts.py --mode all|intraday|close_confirm|eod|multi --force`
 *   **免費雲端**：GitHub Actions（見 [`docs/CLOUD_ALERTS.md`](../docs/CLOUD_ALERTS.md)），不必自架 Heroku／家用主機常開。
 *   多資產：`scan_multi_asset.py`（黃金評等金額、匯率、BTC、VOO/QQQ 觀測）
 *   測試：
@@ -103,7 +110,10 @@ python src_scripts/fetch_stock_data.py 2330
 
 | 時間 | 指令 |
 |------|------|
-| 盤中每小時 | `scan_black_swan.py --no-popup` |
+| 約 09:05 | `intraday`（大盤／匯率；不推個股破防守） |
+| 約 13:10 | `close_confirm`（近收盤確認破防守） |
+| 約 14:15 | `eod` |
+| 約 20:00 | `multi` |
 | 約 14:10 | `scan_position_levels.py`（主推播） |
 | 晚間 | `scan_black_swan.py --asset-window --no-popup` |
 | 盤後／週末 | `market_screener.py` 或 `analyze_portfolio_deep.py`；必要時 `run_etf_backtest.py` |

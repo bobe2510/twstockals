@@ -3,10 +3,11 @@
 Unified alert runner for cloud / local cron.
 
 Modes:
-  --mode all          black_swan + position_levels + multi_asset
-  --mode intraday     black_swan only (TW session / emergency)
-  --mode eod          position_levels only
-  --mode multi        gold / FX / BTC / US ETF watch
+  --mode all            black_swan + close_confirm + position_levels + multi_asset
+  --mode intraday       black_swan only（大盤／匯率／反1；不推個股破防守）
+  --mode close_confirm  ~13:10 近收盤確認破防守 + 提早 EOD 清單
+  --mode eod            position_levels only
+  --mode multi          gold / FX / BTC / US ETF watch
 """
 from __future__ import annotations
 
@@ -31,7 +32,6 @@ def run_script(name: str, extra_args: list[str]) -> int:
     print(f"\n=== RUN {name} {' '.join(extra_args)} ===")
     env = os.environ.copy()
     env["TWSTOCKALS_WORKSPACE"] = ROOT
-    # Ensure imports resolve
     env["PYTHONPATH"] = SCRIPTS + os.pathsep + env.get("PYTHONPATH", "")
     proc = subprocess.run(cmd, cwd=ROOT, env=env)
     print(f"=== EXIT {name} code={proc.returncode} ===")
@@ -42,7 +42,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["all", "intraday", "eod", "multi"],
+        choices=["all", "intraday", "close_confirm", "eod", "multi"],
         default="all",
     )
     parser.add_argument("--force", action="store_true", help="Pass --force to child scripts")
@@ -64,12 +64,22 @@ def main():
         sw = list(common)
         if args.no_popup:
             sw.append("--no-popup")
-        # Outside TW hours black_swan exits unless --force; cloud hourly job should pass --force
-        # only when we want; for intraday schedule we use --force so GHA timezone gaps still run
-        # then script logic still applies thresholds.
         if "--force" not in sw:
             sw.append("--force")
         codes.append(run_script("scan_black_swan.py", sw))
+
+    if args.mode in ("all", "close_confirm"):
+        sw = list(common)
+        if args.no_popup:
+            sw.append("--no-popup")
+        if "--force" not in sw:
+            sw.append("--force")
+        sw.append("--close-confirm")
+        codes.append(run_script("scan_black_swan.py", sw))
+        eargs = list(common)
+        if "--force" not in eargs:
+            eargs.append("--force")
+        codes.append(run_script("scan_position_levels.py", eargs))
 
     if args.mode in ("all", "eod"):
         eargs = list(common)

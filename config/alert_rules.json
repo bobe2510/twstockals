@@ -6,10 +6,22 @@
   "cooldown_hours": 24,
   "ma_touch_tolerance_pct": 0.8,
   "exit_priority_bounce_pct": 3.0,
+  "intraday_push_stock_stops": false,
+  "intraday_push_stock_plunge": false,
+  "close_confirm": {
+    "enabled": true,
+    "start_hhmm": "1305",
+    "end_hhmm": "1325",
+    "note": "約13:10近收盤確認破防守；盤中不推個股停損以免賣在阿呆谷"
+  },
   "rules": {
     "stop_5d_low": {
       "urgency": "emergency",
-      "description": "收盤或盤中跌破5日低點停損"
+      "description": "約13:10近收盤確認跌破5日低／防守線才推播；盤中不推以免阿呆谷"
+    },
+    "close_confirm_stop": {
+      "urgency": "emergency",
+      "description": "收盤確認窗破防守推播"
     },
     "take_profit_ma5": {
       "urgency": "eod_action",

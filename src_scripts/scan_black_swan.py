@@ -251,7 +251,8 @@ def trigger_desktop_alert(message):
     ctypes.windll.user32.MessageBoxW(0, message, "🚨 台股黑天鵝警報 🚨", 0x10 | 0x0)
 
 
-def check_stop_level_breaches(price_map, levels_doc):
+def check_stop_level_breaches(price_map, levels_doc, *, close_confirm=False):
+    """個股破防守：盤中只記錄；close_confirm 才產生可推播文案。"""
     alerts = []
     for row in levels_doc.get("levels") or []:
         if row.get("status") != "portfolio":
@@ -262,10 +263,28 @@ def check_stop_level_breaches(price_map, levels_doc):
             continue
         px = price_map[code]
         if px <= stop:
-            alerts.append(
-                f"🛡️ 停損觸價：{code} {row.get('name','')} 現價 {px:.2f} ≤ 停損 {stop:.2f}"
-            )
+            if close_confirm:
+                alerts.append(
+                    f"🛡️ 收盤確認破防守：{code} {row.get('name','')} "
+                    f"近收盤 {px:.2f} ≤ 停損 {stop:.2f}。"
+                    f"請再核對 13:30 收盤；執行窗 13:40 後／隔日開盤，禁止開盤殺低。"
+                )
+            else:
+                alerts.append(
+                    f"（盤中僅記錄不推播）{code} {row.get('name','')} "
+                    f"盤中 {px:.2f} ≤ 停損 {stop:.2f} → 改約 13:10 收盤確認"
+                )
     return alerts
+
+
+def in_close_confirm_window(now, rules):
+    cc = rules.get("close_confirm") or {}
+    if cc.get("enabled") is False:
+        return False
+    start = str(cc.get("start_hhmm", "1305"))
+    end = str(cc.get("end_hhmm", "1325"))
+    t = now.strftime("%H%M")
+    return start <= t <= end
 
 
 def main():
@@ -275,10 +294,11 @@ def main():
 
     is_force = "--force" in sys.argv
     asset_window = "--asset-window" in sys.argv
+    close_confirm = "--close-confirm" in sys.argv
     in_tw_session = 7 <= current_hour < 14
     in_asset_session = current_hour >= 20 or current_hour < 5
 
-    if not is_force:
+    if not is_force and not close_confirm:
         if asset_window and not in_asset_session:
             print("非多資產晚間視窗 (20:00~05:00) 且無 --force，退出。")
             sys.exit(0)
@@ -287,13 +307,29 @@ def main():
             sys.exit(0)
 
     no_popup = "--no-popup" in sys.argv
-    enable_alert_popup = (is_force or in_tw_session) and not no_popup and not asset_window
+    enable_alert_popup = (
+        (is_force or in_tw_session)
+        and not no_popup
+        and not asset_window
+        and not close_confirm
+    )
+    push_stock_plunge = bool(rules.get("intraday_push_stock_plunge", False))
 
+    mode_label = (
+        "收盤確認破防守"
+        if close_confirm
+        else ("多資產視窗" if asset_window else "台股緊急／大盤（個股停損不推）")
+    )
     print(f"開始掃描市場狀態... 基準時間: {now.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"模式: {'多資產視窗' if asset_window else '台股緊急盤中'} | 彈窗: {'開' if enable_alert_popup else '關'}")
+    print(f"模式: {mode_label} | 彈窗: {'開' if enable_alert_popup else '關'}")
 
     holdings, watchlist = load_targets()
     levels_doc = load_levels()
+    force_exit_codes = set(levels_doc.get("force_exit_codes") or [])
+    for h in holdings:
+        if h.get("force_exit"):
+            force_exit_codes.add(h["code"])
+    reverse_like = {"00632R"} | {c for c in force_exit_codes if str(c).endswith("R")}
 
     all_codes = []
     portfolio_codes = set()
@@ -350,6 +386,7 @@ def main():
                 if change_pct <= TAIEX_ALERT_PCT:
                     price_alerts.append(
                         f"🔴 加權指數 (大盤) 重挫 {change_pct:.2f}%！(最新價: {current_price:.2f})"
+                        f"｜個股防守改收盤確認，勿盤中殺低。"
                     )
             else:
                 price_map[code] = current_price
@@ -362,20 +399,30 @@ def main():
                     "close": current_price,
                     "change_pct": change_pct
                 })
+                # 個股重挫：盤中原則不推（避免阿呆谷）；反1／force_exit 例外；收盤確認窗可推
                 if code in portfolio_codes and change_pct <= PORTFOLIO_ALERT_PCT:
-                    price_alerts.append(
+                    line = (
                         f"⚠️ 持股【{code} {code_to_name[code]}】重挫 {change_pct:.2f}%！"
                         f"(最新價: {current_price:.2f})"
                     )
+                    if code in reverse_like:
+                        price_alerts.append(
+                            line + "｜若為反1／出清標的：可規劃逢高變現（非殺多單）。"
+                        )
+                    elif close_confirm or push_stock_plunge:
+                        price_alerts.append(line + ("｜收盤確認窗。" if close_confirm else ""))
                 elif code in watchlist_codes and change_pct <= TRACKED_ALERT_PCT:
-                    price_alerts.append(
-                        f"🟡 觀測股【{code} {code_to_name[code]}】重挫 {change_pct:.2f}%！"
-                        f"(最新價: {current_price:.2f})"
-                    )
+                    if close_confirm or push_stock_plunge:
+                        price_alerts.append(
+                            f"🟡 觀測股【{code} {code_to_name[code]}】重挫 {change_pct:.2f}%！"
+                            f"(最新價: {current_price:.2f})"
+                        )
         except ValueError:
             continue
 
-    stop_alerts = check_stop_level_breaches(price_map, levels_doc) if price_map else []
+    stop_alerts = check_stop_level_breaches(
+        price_map, levels_doc, close_confirm=close_confirm
+    ) if price_map else []
     us_indicators = check_us_market_indicators()
     us_alerts = [x["message"] for x in us_indicators if x["is_warning"] and x["message"]]
     rate_info = check_twd_exchange_rate()
@@ -386,14 +433,24 @@ def main():
     macro_level = levels_doc.get("macro_level")
     macro_alerts = []
     if macro_level in (2, 3):
-        macro_alerts.append(f"大盤濾網目前 Level {macro_level}（請依收盤後清單減碼，盤中勿追價）")
+        macro_alerts.append(
+            f"大盤濾網目前 Level {macro_level}（個股防守以收盤確認；盤中勿跟外資殺低）"
+        )
 
     os.makedirs(os.path.dirname(REPORT_PATH), exist_ok=True)
     with open(REPORT_PATH, 'w', encoding='utf-8') as f:
         f.write("# 🚨 黑天鵝防禦網即時警報 (Black Swan Defense Report)\n\n")
         f.write(f"掃描基準時間：{now.strftime('%Y-%m-%d %H:%M:%S')}  \n")
-        f.write("監控對象：加權指數、持有個股停損觸價、觀測個股、美股夜盤、多資產波動與財經重大頭條  \n")
-        f.write("> 分級：盤中僅推 **緊急**；建倉／一般停利併入收盤 `scan_position_levels.py`。  \n\n")
+        f.write(
+            "監控對象：加權／匯率／美股夜盤／多資產；"
+            "**個股破防守改約 13:10 收盤確認後才推播**  \n"
+        )
+        f.write(
+            "> 分級：盤中只推 **大盤／匯率／反1出清類**；"
+            "個股停損／破防守 **不盤中推**，避免賣在阿呆谷。  \n\n"
+        )
+        if close_confirm:
+            f.write("> ⏱ 目前為 **收盤確認窗**：以近收盤價核對防守線。  \n\n")
 
         f.write("## 📌 當前總經與市場狀態\n\n")
         f.write(f"* **加權指數 (TAIEX)**: **{taiex_close:.2f}** ({taiex_change:+.2f}%)  \n")
@@ -432,7 +489,7 @@ def main():
         f.write("| :---: | :---: | :--- | :---: | :---: | :---: | :--- |\n")
         for p in price_status_list:
             color = "🔴" if p["change_pct"] >= 3.0 else "🟢" if p["change_pct"] <= -3.0 else "⚪"
-            warn_str = "⚠️ 重挫警戒" if (
+            warn_str = "⚠️ 重挫（僅記錄）" if (
                 (p["status"] == "持股" and p["change_pct"] <= PORTFOLIO_ALERT_PCT) or
                 (p["status"] == "觀測" and p["change_pct"] <= TRACKED_ALERT_PCT)
             ) else "正常"
@@ -464,9 +521,25 @@ def main():
     history_path = os.path.join(WORKSPACE, "reports", "history", f"black_swan_defense_{date_compact}.md")
     shutil.copy(REPORT_PATH, history_path)
 
-    emergency_alerts = price_alerts + stop_alerts + us_alerts + exchange_alerts + asset_alerts
+    # 推播：盤中＝大盤／匯率／美股／多資產／反1；破防守僅 close_confirm
+    push_price = []
+    for a in price_alerts:
+        if "加權指數" in a or "反1" in a or "出清標的" in a:
+            push_price.append(a)
+        elif close_confirm:
+            push_price.append(a)
+
+    push_stops = [a for a in stop_alerts if close_confirm and "收盤確認破防守" in a]
+
+    emergency_alerts = push_price + push_stops + us_alerts + exchange_alerts + asset_alerts
     if emergency_alerts:
         alert_body = "\n".join(emergency_alerts + [x['title'] for x in news_alerts])
+        if close_confirm:
+            alert_body = (
+                "【收盤確認｜非盤中殺低】\n"
+                + alert_body
+                + "\n\n執行：13:40後或隔日開盤；開盤09:00-09:30凍結。"
+            )
         os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
         now_str = now.strftime("%Y-%m-%d %H:%M:%S")
         with open(LOG_FILE, 'a', encoding='utf-8') as f:
@@ -474,10 +547,14 @@ def main():
 
         if notify:
             notify(
-                title=f"緊急市場警報 {now.strftime('%m/%d %H:%M')}",
+                title=(
+                    f"收盤確認破防守 {now.strftime('%m/%d %H:%M')}"
+                    if close_confirm
+                    else f"緊急市場警報 {now.strftime('%m/%d %H:%M')}"
+                ),
                 body=alert_body[:3500],
                 symbol="MARKET",
-                rule_id="black_swan_emergency",
+                rule_id="close_confirm_stop" if close_confirm else "black_swan_emergency",
                 urgency="emergency",
             )
 
@@ -487,7 +564,7 @@ def main():
         else:
             print("警報已記錄／推播（未彈窗）。")
     else:
-        print("市場無異常，防禦網報告更新完畢。")
+        print("無推播項目（個股破防守改收盤確認），防禦網報告更新完畢。")
 
 
 if __name__ == "__main__":
