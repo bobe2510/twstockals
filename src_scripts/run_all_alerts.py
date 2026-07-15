@@ -5,7 +5,7 @@ Unified alert runner for cloud / local cron.
 Modes:
   --mode all            black_swan + close_confirm + position_levels + multi_asset
   --mode intraday       black_swan only（大盤／匯率／反1；不推個股破防守）
-  --mode close_confirm  ~13:10 近收盤確認破防守 + 提早 EOD + 觀測評等
+  --mode close_confirm  ~13:10 近收盤確認破防守 + 出清倉停損停利 + 提早 EOD + 觀測評等
   --mode eod            position_levels + 觀測評等（≥門檻請買進）
   --mode multi_day      上班窗：黃金／外匯（台銀可執行）
   --mode multi          晚間：黃金複核 + BTC + 美股觀測 + 觀測評等
@@ -85,6 +85,11 @@ def main():
             sw.append("--force")
         sw.append("--close-confirm")
         codes.append(run_script("scan_black_swan.py", sw))
+        # 出清倉專推：只報台股打算出清的個股／ETF 停損停利
+        xargs = list(common)
+        if "--force" not in xargs:
+            xargs.append("--force")
+        codes.append(run_script("scan_exit_watch.py", xargs))
         eargs = list(common)
         if "--force" not in eargs:
             eargs.append("--force")

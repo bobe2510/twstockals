@@ -2,11 +2,16 @@
 """持股分類：核心 ETF vs 個股停損停利規則。"""
 from __future__ import annotations
 
+from typing import Optional
+
 # 長抱核心／配置型：不用個股 5日低 + 均線停利
 CORE_ETF_CODES = frozenset({"0050", "00631L", "00687B"})
 
 # 已剔除、不該再推「建倉」的代號（改提示銀行美元／黃金等）
 REJECTED_BUY_CODES = frozenset({"00682U", "00635U", "PDBC", "USO", "XLE"})
+
+# 長抱核心：不進「出清倉 13:10」專推
+KEEP_CORE_CODES = frozenset({"0050", "00631L"})
 
 
 def is_core_etf(code: str, name: str = "") -> bool:
@@ -14,6 +19,43 @@ def is_core_etf(code: str, name: str = "") -> bool:
     if code in CORE_ETF_CODES:
         return True
     if code in ("00687B",) or "債" in str(name):
+        return True
+    return False
+
+
+def is_tw_stock_code(code: str) -> bool:
+    """台股個股四碼（不含 ETF 字母尾）。"""
+    c = str(code or "")
+    return c.isdigit() and len(c) == 4
+
+
+def is_tw_exit_watch(
+    code: str,
+    name: str = "",
+    *,
+    policy: str = "",
+    force_exit: bool = False,
+    force_exit_codes: Optional[set] = None,
+) -> bool:
+    """
+    台股出清監控：殘倉個股、force_exit、gradual_exit（如美債 ETF）。
+    排除 0050／正2 長抱；排除美股代號。
+    """
+    c = str(code or "")
+    if not c or c in KEEP_CORE_CODES:
+        return False
+    # 美股常見字母代碼
+    if any(ch.isalpha() for ch in c) and not c[0].isdigit():
+        return False
+    forced = force_exit_codes or set()
+    if force_exit or c in forced:
+        return True
+    pol = str(policy or "").lower()
+    if pol in ("gradual_exit", "force_exit", "exit_only"):
+        return True
+    if c == "00687B" or "債" in str(name):
+        return True
+    if is_tw_stock_code(c):
         return True
     return False
 
