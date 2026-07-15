@@ -556,6 +556,7 @@ def main():
                 symbol="MARKET",
                 rule_id="close_confirm_stop" if close_confirm else "black_swan_emergency",
                 urgency="emergency",
+                force=("--force-notify" in sys.argv),
             )
 
         if enable_alert_popup:

@@ -136,6 +136,18 @@ def mark_sent(symbol: str, rule_id: str, urgency: str = "eod_action") -> None:
     _save_state(state)
 
 
+def _ssl_context():
+    """Prefer certifi CA bundle (helps Windows / corporate MITM chains)."""
+    import ssl
+
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return ssl.create_default_context()
+
+
 def send_telegram(text: str, dry_run: Optional[bool] = None) -> bool:
     cfg = load_notify_config()
     if dry_run is None:
@@ -146,18 +158,29 @@ def send_telegram(text: str, dry_run: Optional[bool] = None) -> bool:
         print(f"[notify/telegram dry-run] {text[:200]}{'...' if len(text) > 200 else ''}")
         return dry_run or False
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = urllib.parse.urlencode({
+    data = {
         "chat_id": chat_id,
         "text": text,
         "disable_web_page_preview": "true",
-    }).encode("utf-8")
-    req = urllib.request.Request(url, data=payload, method="POST")
+    }
+    # Prefer requests (better SSL / proxy behavior on Windows)
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return resp.status == 200
-    except Exception as e:
-        print(f"[notify/telegram error] {e}")
+        import requests
+
+        resp = requests.post(url, data=data, timeout=15)
+        if resp.status_code == 200:
+            return True
+        print(f"[notify/telegram error] HTTP {resp.status_code}")
         return False
+    except Exception as e_req:
+        payload = urllib.parse.urlencode(data).encode("utf-8")
+        req = urllib.request.Request(url, data=payload, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=15, context=_ssl_context()) as resp:
+                return resp.status == 200
+        except Exception as e:
+            print(f"[notify/telegram error] requests={e_req}; urllib={e}")
+            return False
 
 
 def send_email(subject: str, body: str, dry_run: Optional[bool] = None) -> bool:
