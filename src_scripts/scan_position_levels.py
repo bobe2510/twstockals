@@ -8,8 +8,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime
-
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
@@ -25,6 +23,14 @@ EOD_REPORT_PATH = os.path.join(WORKSPACE, "reports", "latest", "eod_action_list.
 
 sys.path.insert(0, os.path.join(WORKSPACE, "src_scripts"))
 from notify import notify, load_alert_rules  # noqa: E402
+from holding_rules import (  # noqa: E402
+    REJECTED_BUY_CODES,
+    core_etf_eod_actions,
+    is_core_etf,
+)
+from trade_levels import holding_exit_plan  # noqa: E402
+from tw_time import taiwan_now  # noqa: E402
+
 
 
 def load_levels():
@@ -34,11 +40,11 @@ def load_levels():
         return json.load(f)
 
 
-def load_live_holdings():
-    """即時持股／已出清集合，避免過期 levels.json 對已賣光標的再推播。"""
+def load_targets_meta():
+    """即時持股／已出清／成本／剔除清單／policy。"""
     path = os.path.join(WORKSPACE, "config", "my_targets.json")
     if not os.path.exists(path):
-        return set(), set()
+        return set(), set(), {}, set(), {}
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     portfolio = {
@@ -51,9 +57,82 @@ def load_live_holdings():
         for x in (data.get("cleared_positions") or [])
         if x.get("code")
     }
-    # cleared 優先：同時出現時視為已出清
+    costs = {}
+    policies = {}
+    for h in (data.get("portfolio") or []):
+        c = str(h.get("code") or "")
+        if c and h.get("cost") is not None:
+            costs[c] = float(h["cost"])
+        if c and h.get("policy"):
+            policies[c] = str(h["policy"])
+    rejected = {
+        str(x)
+        for x in ((data.get("approved_universe") or {}).get("rejected") or [])
+        if x
+    } | set(REJECTED_BUY_CODES)
     portfolio -= cleared
-    return portfolio, cleared
+    return portfolio, cleared, costs, rejected, policies
+
+
+def save_holdings_snapshot(costs: dict, policies: dict) -> None:
+    """寫入 reports/latest/holdings.json，方便對帳當前持股與成本。"""
+    path = os.path.join(WORKSPACE, "config", "my_targets.json")
+    if not os.path.exists(path):
+        return
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    rows = []
+    for h in data.get("portfolio") or []:
+        rows.append(
+            {
+                "code": h.get("code"),
+                "name": h.get("name"),
+                "shares": h.get("shares"),
+                "cost": h.get("cost"),
+                "policy": h.get("policy"),
+                "note": h.get("note"),
+            }
+        )
+    out = {
+        "as_of": taiwan_now().isoformat(timespec="seconds"),
+        "portfolio": rows,
+        "cleared_positions": data.get("cleared_positions") or [],
+        "multi_asset_summary": {
+            "gold_g": (data.get("multi_asset") or {}).get("gold_passbook", {}).get("qty"),
+            "usd": (data.get("multi_asset") or {}).get("forex_usd", {}).get("qty"),
+            "pause_us_ib": (data.get("multi_asset") or {}).get("pause_us_ib"),
+        },
+    }
+    snap = os.path.join(WORKSPACE, "reports", "latest", "holdings.json")
+    os.makedirs(os.path.dirname(snap), exist_ok=True)
+    with open(snap, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
+
+def effective_roi(row, costs: dict) -> float | None:
+    """優先 levels.roi_pct；否則用 cost（levels 或 my_targets）與收盤價估算。"""
+    if row.get("roi_pct") is not None:
+        return float(row["roi_pct"])
+    code = str(row.get("code") or "")
+    cost = row.get("cost")
+    if cost is None and code:
+        cost = costs.get(code)
+    close = row.get("close")
+    if cost is not None and close is not None and float(cost) > 0:
+        return (float(close) / float(cost) - 1.0) * 100.0
+    return None
+
+
+def roi_for_code(levels_doc, code: str, costs: dict):
+    for row in levels_doc.get("levels") or []:
+        if str(row.get("code") or "") == code:
+            return effective_roi(row, costs)
+    return None
+
+
+def in_profit(roi_pct) -> bool:
+    """停利建議僅在帳面獲利時；套牢部位以停損／續抱為準。"""
+    return roi_pct is not None and float(roi_pct) > 0
 
 
 def near(price, level, tol_pct):
@@ -62,12 +141,22 @@ def near(price, level, tol_pct):
     return abs(price - level) / abs(level) * 100.0 <= tol_pct
 
 
+def _fmt_opt(v) -> str:
+    try:
+        return f"{float(v):.2f}"
+    except (TypeError, ValueError):
+        return "—"
+
+
 def main():
-    now = datetime.now()
+    now = taiwan_now()
     force = "--force" in sys.argv
     # Default window: after TW close ~13:40, allow until evening; or --force
     if not force and not (13 <= now.hour <= 22):
-        print("非收盤後掃描時段 (13:00~22:00) 且無 --force，退出。")
+        print(
+            f"非收盤後掃描時段 (台北 13:00~22:00) 且無 --force，退出。"
+            f" now={now.isoformat()}"
+        )
         sys.exit(0)
 
     levels_doc = load_levels()
@@ -75,7 +164,10 @@ def main():
         print(f"找不到 {LEVELS_PATH}，請先跑 analyze_portfolio_deep / market_screener。")
         sys.exit(1)
 
-    live_portfolio, cleared_codes = load_live_holdings()
+    live_portfolio, cleared_codes, portfolio_costs, rejected_codes, policies = (
+        load_targets_meta()
+    )
+    save_holdings_snapshot(portfolio_costs, policies)
     rules = load_alert_rules()
     tol = float(rules.get("ma_touch_tolerance_pct", 0.8))
     bounce = float(rules.get("exit_priority_bounce_pct", 3.0))
@@ -100,6 +192,22 @@ def main():
                 break
         if mentioned and live_portfolio and mentioned not in live_portfolio:
             continue
+        # 核心 ETF／已剔除商品：改由下方具體建議重算，略過舊空泛句
+        if mentioned and (
+            is_core_etf(mentioned)
+            or mentioned in rejected_codes
+            or "正2袖口" in a
+            or a.startswith("正2擇時")
+            or a.startswith("債券配置")
+            or a.startswith("0050底倉")
+        ):
+            continue
+        if any(rc in a for rc in rejected_codes) and ("建倉" in a or "停利" in a or "00682U" in a):
+            continue
+        # 套牢股：舊「停利／停利檢視」一律丟棄，避免推播誤導砍虧
+        if mentioned and ("停利" in a):
+            if not in_profit(roi_for_code(levels_doc, mentioned, portfolio_costs)):
+                continue
         actions.append(a)
 
     forced = {
@@ -109,6 +217,11 @@ def main():
     }
     macro = levels_doc.get("macro_level", 1)
     cp_name = levels_doc.get("cp_best_strategy") or "（尚未回測）"
+    above_200 = None
+    for row in levels_doc.get("levels") or []:
+        if str(row.get("code")) == "TAIEX":
+            above_200 = row.get("above_200ma")
+            break
 
     for row in levels_doc.get("levels") or []:
         code = str(row.get("code") or "")
@@ -123,13 +236,59 @@ def main():
                 continue
             if code not in live_portfolio:
                 continue
+
+            if row.get("profit_rule") == "etf_core" or (
+                is_core_etf(code, name) and code not in forced
+            ):
+                cost = row.get("cost")
+                if cost is None:
+                    cost = portfolio_costs.get(code)
+                roi = effective_roi(row, portfolio_costs)
+                actions.extend(
+                    core_etf_eod_actions(
+                        code,
+                        name,
+                        macro_level=int(macro),
+                        above_200ma=above_200,
+                        close=float(close) if close is not None else None,
+                        cost=float(cost) if cost is not None else None,
+                        roi_pct=roi,
+                        ma5=row.get("ma5"),
+                        ma10=row.get("ma10"),
+                        ma20=row.get("ma20"),
+                    )
+                )
+                continue
+
             stop = row.get("stop") or row.get("low_5d")
             profit = row.get("profit")
             add = row.get("add")
+            roi = effective_roi(row, portfolio_costs)
+            cost = row.get("cost")
+            if cost is None:
+                cost = portfolio_costs.get(code)
+
+            # 個股：每次 EOD 都報停損／停利狀態（含成本）
+            actions.extend(
+                holding_exit_plan(
+                    code=code,
+                    name=name,
+                    close=float(close) if close is not None else None,
+                    cost=float(cost) if cost is not None else None,
+                    roi_pct=roi,
+                    stop=float(stop) if stop is not None else None,
+                    profit=float(profit) if profit is not None else None,
+                    ma5=row.get("ma5"),
+                    ma10=row.get("ma10"),
+                    is_etf_core=False,
+                    policy=policies.get(code, ""),
+                )
+            )
+
             if stop is not None and close <= stop:
-                actions.append(f"停損（砍虧）：{code} {name} 收盤 {close:.2f} ≤ 停損 {stop:.2f}")
+                # holding_exit_plan 已含觸發句；略過重複舊格式
+                pass
             else:
-                roi = row.get("roi_pct")
                 if row.get("allow_roi_tp") and roi is not None:
                     roi1 = float((rules.get("thresholds") or {}).get("take_profit_roi_1", 12.0))
                     roi2 = float((rules.get("thresholds") or {}).get("take_profit_roi_2", 25.0))
@@ -143,30 +302,47 @@ def main():
                         actions.append(
                             f"達標停利①（鎖定獲利）：{code} {name} 報酬 {roi:+.1f}% → 先賣約 {frac1:.0%}"
                         )
-                if profit is not None and close < profit and code not in forced:
-                    actions.append(
-                        f"移動停利（鎖定漲幅）：{code} {name} 收盤 {close:.2f} < 停利線 {profit:.2f}"
-                    )
             if add is not None and near(close, add, tol) and code not in forced:
-                actions.append(f"主力加碼帶：{code} {name} 接近 10MA {add:.2f}（勿對 force_exit 加碼）")
+                actions.append(
+                    f"主力加碼帶：{code} {name} 接近 10MA {add:.2f}"
+                    f"（成本 {cost if cost is not None else '—'}；勿對 force_exit 加碼）"
+                )
             if code in forced:
-                # bounce window heuristic: if close above stop by bounce%
                 if stop and close >= stop * (1 + bounce / 100.0):
                     actions.append(f"出清窗：{code} {name} 相對防守點反彈，逢高分批出清")
 
         elif status == "watchlist":
+            if code in rejected_codes:
+                if code in ("00682U",) or "美元" in str(name):
+                    actions.append(
+                        "美元配置：不要買 00682U 美元指數 ETF；"
+                        "若要避險／囤匯，改在台銀等直接買美金（對照匯率年均線，見多資產報表）"
+                    )
+                continue
             entry = row.get("entry")
+            stop = row.get("stop") or row.get("low_5d")
+            profit = row.get("profit")
             if entry is not None and near(close, entry, tol):
-                actions.append(f"建倉提醒：{code} {name} 回測 5MA {entry:.2f}（EOD 確認後再下單）")
+                actions.append(
+                    f"建倉提醒：{code} {name} 回測 5MA {entry:.2f}（現價 {close:.2f}）｜"
+                    f"進場帶≈{entry:.2f}；停損參考 {_fmt_opt(stop)}；"
+                    f"停利參考 {_fmt_opt(profit)}（EOD 確認後再下單）"
+                )
 
         elif status == "macro" and code == "TAIEX":
             above = row.get("above_200ma")
             ma200 = row.get("ma200")
             if ma200 is not None:
-                actions.append(
-                    f"年線狀態：大盤 {close:.2f} / 200MA {ma200:.2f} → "
-                    f"{'多頭持有正2袖口' if above else '空頭：正2空倉／現金'}"
-                )
+                if above:
+                    actions.append(
+                        f"大盤年線：{close:.2f} 仍在 200MA {ma200:.2f} 之上 → "
+                        f"長線多頭未破；正2既有倉可續抱，但若 Level≥3 仍禁止加碼"
+                    )
+                else:
+                    actions.append(
+                        f"大盤年線：{close:.2f} 跌破 200MA {ma200:.2f} → "
+                        f"正2建議減碼／空倉（EOD 確認後執行）"
+                    )
 
     # de-dupe preserve order
     seen = set()

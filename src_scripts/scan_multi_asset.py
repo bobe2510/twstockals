@@ -27,6 +27,7 @@ TARGETS_PATH = os.path.join(WORKSPACE, "config", "my_targets.json")
 sys.path.insert(0, os.path.join(WORKSPACE, "src_scripts"))
 from notify import notify, load_alert_rules  # noqa: E402
 from market_data import fetch_daily  # noqa: E402
+from tw_time import taiwan_now  # noqa: E402
 
 OZ_TO_GRAM = 31.1034768
 
@@ -160,10 +161,13 @@ def grade_gold_buy(gold: dict, usdtwd: dict) -> dict:
 
 
 def main():
-    now = datetime.now()
+    now = taiwan_now()
     force = "--force" in sys.argv
     if not force and not (now.hour >= 18 or now.hour < 8):
-        print("非晚間多資產視窗（18:00~08:00）且無 --force，退出。")
+        print(
+            f"非晚間多資產視窗（台北 18:00~08:00）且無 --force，退出。"
+            f" now={now.isoformat()}"
+        )
         sys.exit(0)
 
     rules = load_alert_rules()
@@ -294,9 +298,13 @@ def main():
 
     # US ETF watch (even if not held yet)
     lines.append("## 美股 ETF 觀測（尚未建倉也可提醒）\n\n")
-    if multi.get("pause_us_ib"):
-        lines.append("* 目前 **暫停 IB 新資金**；以下僅觀測跌深提醒，不建議立刻匯款買入。  \n")
+    pause_us = bool(multi.get("pause_us_ib"))
+    if pause_us:
+        lines.append(
+            "* 目前 **暫停 IB 新資金**：美股 ETF **只寫報告、不推播買點／匯款**。  \n"
+        )
     us_etf_th = float(th.get("us_etf_alert_pct", -5.0))
+    us_ib_notes: list[str] = []
     for sym, name in [
         ("VOO", "Vanguard S&P500"),
         ("VXUS", "Vanguard International ex-US"),
@@ -308,11 +316,16 @@ def main():
         bias200 = (
             (q["price"] - q["ma200"]) / q["ma200"] * 100 if q.get("ma200") else None
         )
+        bias50 = (
+            (q["price"] - q["ma50"]) / q["ma50"] * 100 if q.get("ma50") else None
+        )
         lines.append(
             f"* **{sym} {name}**：{q['price']:.2f} ({q['change_pct']:+.2f}%)"
         )
         if bias200 is not None:
             lines.append(f"｜vs200MA {bias200:+.1f}%")
+        if bias50 is not None:
+            lines.append(f"｜vs50MA {bias50:+.1f}%")
         lines.append("  \n")
         if q["change_pct"] <= us_etf_th:
             title = f"{sym} 急跌觀測"
@@ -320,13 +333,37 @@ def main():
                 f"{sym} 單日 {q['change_pct']:+.2f}%（閾值 {us_etf_th}%）。\n"
                 f"現價 {q['price']:.2f}"
                 + (f"｜vs200MA {bias200:+.1f}%" if bias200 is not None else "")
-                + ("\n（暫停 IB：只記錄，不建議立刻匯款追買）" if multi.get("pause_us_ib") else "\n可列入觀察買點。")
+                + ("\n（pause_us_ib：只警戒、不建議匯款追買）" if pause_us else "\n急跌日不追；若之後止穩再評估。")
             )
             actions.append((sym, "us_etf_shock", "emergency", title, msg))
-        if bias200 is not None and bias200 <= -8 and not multi.get("pause_us_ib"):
+        # 布局窗僅記報告；pause 時不推播
+        if bias200 is not None and bias200 <= -8:
+            us_ib_notes.append(f"{sym} 年線下深回撤 {bias200:+.1f}%")
+        elif (
+            q.get("ma200")
+            and q["price"] > q["ma200"]
+            and bias50 is not None
+            and -3.0 <= bias50 <= 1.5
+        ):
+            us_ib_notes.append(f"{sym} 年線上＋回測季線（乖離 {bias50:+.1f}%）")
+        if bias200 is not None and bias200 <= -8 and not pause_us:
             title = f"{sym} 回撤至年線下"
             msg = f"{sym} 乖離年線 {bias200:+.1f}%，可規劃小額試倉（非一次滿倉）。"
             actions.append((sym, "us_etf_buy_zone", "eod_action", title, msg))
+
+    if us_ib_notes:
+        if pause_us:
+            lines.append(
+                "* **布局窗（僅觀測，暫停推播）**："
+                + "；".join(us_ib_notes)
+                + "  \n"
+            )
+        else:
+            lines.append(
+                "* **布局窗（詳見晚間觀測評等推播）**："
+                + "；".join(us_ib_notes)
+                + "  \n"
+            )
     lines.append("\n")
 
     if btc:
@@ -358,13 +395,18 @@ def main():
     with open(REPORT_PATH, "w", encoding="utf-8") as f:
         f.write("".join(lines))
 
-    for symbol, rule_id, urgency, title, msg in actions:
+    if actions:
+        body_lines = []
+        for i, (_, _, urg, title, msg) in enumerate(actions, 1):
+            tag = "🚨" if urg == "emergency" else "📋"
+            body_lines.append(f"{tag} {i}. {title}\n{msg}")
+        top_urg = "emergency" if any(a[2] == "emergency" for a in actions) else "eod_action"
         notify(
-            title=title,
-            body=msg + "\n\n詳見 reports/latest/multi_asset_levels.md",
-            symbol=symbol,
-            rule_id=rule_id,
-            urgency=urgency,
+            title=f"多資產摘要 {now.strftime('%m/%d')}（{len(actions)} 項）",
+            body="\n".join(body_lines)[:3500] + "\n\n詳見 reports/latest/multi_asset_levels.md",
+            symbol="MULTI",
+            rule_id="multi_asset_digest",
+            urgency=top_urg,
             force=("--force-notify" in sys.argv),
         )
 

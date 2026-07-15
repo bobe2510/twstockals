@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Optional
 
 try:
@@ -30,6 +30,8 @@ TARGETS_PATH = os.path.join(WORKSPACE, "config", "my_targets.json")
 sys.path.insert(0, os.path.join(WORKSPACE, "src_scripts"))
 from notify import notify, load_alert_rules  # noqa: E402
 from market_data import fetch_daily  # noqa: E402
+from trade_levels import entry_plan_for_symbol  # noqa: E402
+from tw_time import taiwan_now  # noqa: E402
 
 
 def load_targets():
@@ -66,8 +68,8 @@ def fetch_tw_daily(code: str, years: int = 3) -> list[dict]:
         from fetch_stock_data import rotator, fetch_with_rotation
     except Exception:
         return []
-    end = datetime.now().strftime("%Y-%m-%d")
-    start = (datetime.now() - timedelta(days=365 * years)).strftime("%Y-%m-%d")
+    end = taiwan_now().strftime("%Y-%m-%d")
+    start = (taiwan_now() - timedelta(days=365 * years)).strftime("%Y-%m-%d")
     try:
         df = fetch_with_rotation(
             rotator,
@@ -296,6 +298,41 @@ def grade_growth_us(s: dict, name: str, cash_cap: int, pause_ib: bool) -> dict:
     return _g("D", f"{name}：無清楚買點。{suffix}", 0, None, stab, bias50, bias50, bias200, bias200)
 
 
+def us_ib_go_signal(s: dict, g: dict, *, code: str) -> tuple[bool, str]:
+    """
+    美股「可開始布局／偏多」窗（僅 pause_us_ib=false 時才推播）。
+    條件（擇一）：評等 A/S；年線上＋回測季線止穩；年線下深回撤止穩。
+    """
+    px = s.get("price")
+    ma50, ma200 = s.get("ma50"), s.get("ma200")
+    stab = bool(g.get("stabilized")) or _stabilized(s)
+    grade = g.get("grade")
+    bias50 = (px - ma50) / ma50 * 100 if ma50 and px else None
+    bias200 = (px - ma200) / ma200 * 100 if ma200 and px else None
+
+    if grade in ("A", "S"):
+        return True, f"{code} 評等 {grade}（深拉回／月線區）"
+    # 多頭結構：站上年線 + 回測季線附近止穩
+    if (
+        ma200
+        and px
+        and px > ma200
+        and bias50 is not None
+        and -3.0 <= bias50 <= 1.5
+        and stab
+    ):
+        return True, f"{code} 年線上＋回測季線止穩（多頭加碼窗）"
+    # 深跌後止穩
+    if bias200 is not None and bias200 <= -8 and stab:
+        return True, f"{code} 年線下深回撤 {bias200:+.1f}% 且止穩"
+    # 核心底倉評等 B 且靠近月線（VOO/VXUS）
+    if code in ("VOO", "VXUS") and grade == "B" and stab:
+        b20 = g.get("bias20")
+        if b20 is not None and -4 <= float(b20) <= 1.5:
+            return True, f"{code} 評等 B＋月線區止穩（可開始分批）"
+    return False, ""
+
+
 def _g(grade, reason, suggest, level, stab, b5, b10, b20, b200):
     return {
         "grade": grade,
@@ -346,14 +383,17 @@ def watch_universe(targets: dict) -> list[dict]:
 
 
 def main():
-    now = datetime.now()
+    now = taiwan_now()
     force = "--force" in sys.argv
-    # 允許收盤確認窗與晚間多資產窗
+    # 允許收盤確認窗與晚間多資產窗（一律台北時間）
     hhmm = now.strftime("%H%M")
     in_close = "1300" <= hhmm <= "1430"
     in_evening = now.hour >= 18 or now.hour < 8
     if not force and not (in_close or in_evening):
-        print("非評等視窗（13:00~14:30 或晚間）且無 --force，退出。")
+        print(
+            f"非評等視窗（台北 13:00~14:30 或晚間）且無 --force，退出。"
+            f" now={now.isoformat()}"
+        )
         sys.exit(0)
 
     targets = load_targets()
@@ -383,6 +423,7 @@ def main():
     )
 
     actions = []
+    us_ib_go: list[str] = []
     for item in watch_universe(targets):
         code = item["code"]
         name = item["name"]
@@ -395,7 +436,16 @@ def main():
         if code == "00631L":
             g = grade_lev_00631L(s, taiex, level, cash)
         elif code in ("QQQ", "QQQM") or item.get("role") in ("growth", "growth_alt", "satellite"):
-            g = grade_growth_us(s, name, cash, pause_ib)
+            g = grade_growth_us(s, name, cash, pause_ib=False)  # 先算真實評等
+            # pause_us_ib：只寫報告，不蒐集「請匯款 IB」推播
+            if (not pause_ib) and market == "US":
+                go, go_why = us_ib_go_signal(s, g, code=code)
+                if go:
+                    us_ib_go.append(go_why)
+            if pause_ib and g["suggest_twd"] > 0:
+                g = dict(g)
+                g["reason"] = g["reason"] + "（暫停IB：只觀測、不推匯款／買點）"
+                g["suggest_twd"] = 0
         else:
             # 0050 / VOO / VXUS core
             g = grade_pullback_core(
@@ -404,12 +454,15 @@ def main():
                 name=name,
                 cash_cap=cash,
             )
-            if market == "US" and pause_ib and g["suggest_twd"] > 0:
-                g["reason"] += "（暫停IB：只觀測、金額僅示意）"
-                g["suggest_twd"] = 0
-                if g["grade"] in ("A", "S"):
-                    g["grade"] = "B"
-                    g["reason"] = g["reason"].replace("較推薦", "允許觀測")
+            if market == "US":
+                if not pause_ib:
+                    go, go_why = us_ib_go_signal(s, g, code=code)
+                    if go:
+                        us_ib_go.append(go_why)
+                if pause_ib and g["suggest_twd"] > 0:
+                    g = dict(g)
+                    g["reason"] += "（暫停IB：只觀測、不推匯款／買點）"
+                    g["suggest_twd"] = 0
 
         lines.append(f"## {code} {name}\n\n")
         lines.append(
@@ -438,13 +491,20 @@ def main():
             title = None
             stance = None
         lines.append(f"{g['reason']}  \n\n")
+        entry_txt = entry_plan_for_symbol(
+            s, code=code, market=market, grade=str(g.get("grade") or "")
+        )
+        lines.append("**進場／防守／停利**  \n")
+        for ln in entry_txt.split("\n"):
+            lines.append(f"* {ln}  \n")
+        lines.append("\n")
 
         if title and g["grade"] in ("B", "A", "S") and g["suggest_twd"] > 0:
-            # 只推「真的可動用金額」；暫停IB的純觀測不洗版
             msg = (
                 f"{g['reason']}\n"
                 f"現價 {s['price']:.2f} ({s['change_pct']:+.2f}%)｜"
-                f"上限 {g['suggest_twd']:,} 元｜大盤Level {level}"
+                f"上限 {g['suggest_twd']:,} 元｜大盤Level {level}\n\n"
+                f"{entry_txt}"
             )
             rule = (
                 "watch_grade_a"
@@ -453,24 +513,67 @@ def main():
             )
             actions.append((code, rule, title, msg))
 
+        elif title and g["grade"] in ("B", "A", "S") and market == "US" and pause_ib:
+            # 暫停 IB：報告可寫進場點，但不推播
+            pass
+
+    if pause_ib:
+        lines.append("## IB 狀態\n\n")
+        lines.append(
+            "* **pause_us_ib=true**：修復期不推「請匯款 IB／買美金 ETF」。"
+            "報告僅觀測；要恢復推播請把 config 改 false。  \n\n"
+        )
+    elif us_ib_go:
+        uniq = []
+        for x in us_ib_go:
+            if x not in uniq:
+                uniq.append(x)
+        plan_bits = []
+        for ucode in ("VOO", "VXUS", "QQQ"):
+            us = fetch_symbol(ucode, "US")
+            if us:
+                plan_bits.append(
+                    f"【{ucode}】\n"
+                    + entry_plan_for_symbol(us, code=ucode, market="US", grade="")
+                )
+        title = "美股可布局｜可匯款 IB 開始操作"
+        msg = (
+            "偵測到美股 ETF 進入可布局／偏多窗：\n"
+            + "\n".join(f"• {x}" for x in uniq)
+            + "\n\n建議：匯款 IB → 核心 VOO:VXUS≈7:3 分批；成長袖 QQQ/QQQM 小於 VOO。"
+        )
+        if plan_bits:
+            msg += "\n\n進場／防守／停利：\n" + "\n\n".join(plan_bits)
+        actions.append(("US_IB", "us_ib_go", title, msg))
+        lines.append("## IB 匯款提醒\n\n")
+        lines.append(f"* **{title}**  \n")
+        for x in uniq:
+            lines.append(f"  * {x}  \n")
+        lines.append("\n")
+
     lines.append("## 推播摘要\n\n")
     if actions:
         for code, rule, title, _ in actions:
-            tag = "推薦" if "推薦" in title else ("允許" if "允許" in title else "觀測")
+            tag = (
+                "匯款IB"
+                if rule == "us_ib_go"
+                else ("推薦" if "推薦" in title else ("允許" if "允許" in title else "觀測"))
+            )
             lines.append(f"* [{tag}] **{title}**\n")
     else:
-        lines.append("* 無 B/A/S 可推項目（或皆為觀望）。\n")
+        lines.append("* 無 B/A/S 可推項目（或皆為觀望／暫停IB）。\n")
 
     os.makedirs(os.path.dirname(REPORT_PATH), exist_ok=True)
     with open(REPORT_PATH, "w", encoding="utf-8") as f:
         f.write("".join(lines))
 
-    for symbol, rule_id, title, msg in actions:
+    if actions:
+        body_lines = [f"{i}. {title}\n{msg}" for i, (_, _, title, msg) in enumerate(actions, 1)]
         notify(
-            title=title,
-            body=msg + "\n\n詳見 reports/latest/watch_grades.md",
-            symbol=symbol,
-            rule_id=rule_id,
+            title=f"觀測評等 {now.strftime('%m/%d')}（{len(actions)} 項）",
+            body="\n".join(body_lines)[:3500] + "\n\n詳見 reports/latest/watch_grades.md",
+            symbol="WATCH",
+            rule_id="watch_grades_digest",
             urgency="eod_action",
             force=("--force-notify" in sys.argv),
         )

@@ -10,7 +10,9 @@
       "code": "00687B",
       "name": "國泰20年美債",
       "shares": 4000,
-      "cost": 33.2
+      "cost": 33.2,
+      "policy": "gradual_exit",
+      "note": "長天期美債波動大；長期逢彈分批出清，資金轉現金／台銀美金／黃金。不加碼。"
     },
     {
       "code": "2301",
@@ -149,6 +151,14 @@
       "ETH",
       "existing_tw_stocks"
     ],
+    "gradual_exit": [
+      {
+        "id": "00687B",
+        "to": ["cash", "BOT_USD", "BOT_GOLD"],
+        "style": "逢彈分批，不開盤殺、不加碼攤平",
+        "why": "長債利率風險大，防禦改現金／美金／黃金更穩"
+      }
+    ],
     "rejected": [
       "PDBC",
       "USO",
@@ -156,9 +166,10 @@
       "00635U",
       "00682U",
       "山寨幣加碼",
-      "個股新開倉"
+      "個股新開倉",
+      "長天期美債加碼"
     ],
-    "note": "核心=0050/黃金/VOO/VXUS；成長袖=QQQ或QQQM＋00631L正2。原油原物料／山寨／新個股剔除。"
+    "note": "核心=0050/黃金/美金/VOO/VXUS；成長袖=QQQ或QQQM＋00631L正2。00687B長期出清轉現金／美金／黃金。原油原物料／山寨／新個股剔除。"
   },
   "multi_asset": {
     "gold_passbook": {
@@ -267,7 +278,7 @@
     ],
     "us_etf": [],
     "us_etf_plan": {
-      "status": "watch_only",
+      "status": "watch_until_ib_go",
       "pause_ib": true,
       "core_pair": "VOO:VXUS=7:3",
       "growth_sleeve": {
@@ -276,7 +287,8 @@
         "cap_vs_voo": "美股成長袖 < VOO；正2另計但與QQQ同屬進攻總額需控管",
         "tw_growth": "00631L 准許加碼；Level≥3 禁止"
       },
-      "note": "核心 VOO+VXUS；成長=QQQ/QQQM 與/或 00631L"
+      "notify_ib_go": false,
+      "note": "pause_us_ib=true：修復期只觀測美股 ETF，不推買點、不推「請匯款 IB」。要恢復推播先改 pause_us_ib=false，並把 notify_ib_go 改 true。"
     },
     "crypto_policy": {
       "core_only": ["BTC", "ETH"],
@@ -301,8 +313,8 @@
     "tw_core_0050": 0.35,
     "tw_lev_00631L": 0.12,
     "tw_stocks": 0.08,
-    "bonds": 0.10,
-    "gold_fx": 0.15,
+    "bonds": 0.0,
+    "gold_fx": 0.25,
     "us_etf": 0.17,
     "crypto": 0.03
   },

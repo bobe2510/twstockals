@@ -4,9 +4,8 @@
   "macro_level": 3,
   "force_exit_codes": [],
   "eod_actions": [
-    "停利檢視：00631L 收盤跌破移動停利 37.70",
-    "停利檢視：00687B 收盤跌破移動停利 28.05",
-    "停利檢視：2301 收盤跌破移動停利 215.95"
+    "正2擇時：00631L 元大台灣50正2 → Level 3，禁止加碼；既有倉視年線續抱或減碼",
+    "債券配置：00687B 國泰20年美債 → Level 3 防禦續抱領息，不做均線停損"
   ],
   "cp_best_strategy": "00631L 買入持有",
   "levels": [
@@ -16,15 +15,18 @@
       "status": "portfolio",
       "force_exit": false,
       "close": 36.78,
-      "stop": 36.47,
-      "profit": 37.69799999999999,
+      "stop": null,
+      "profit": null,
       "entry": null,
-      "add": 37.69799999999999,
+      "add": null,
       "ma5": 37.732000000000006,
       "ma10": 37.69799999999999,
       "ma20": 37.650999999999996,
-      "low_5d": 36.47,
-      "profit_rule": "ma10"
+      "low_5d": null,
+      "profit_rule": "etf_core",
+      "allow_roi_tp": false,
+      "roi_pct": -0.9426339886883905,
+      "cost": 37.13
     },
     {
       "code": "00687B",
@@ -32,15 +34,18 @@
       "status": "portfolio",
       "force_exit": false,
       "close": 27.89,
-      "stop": 27.8,
-      "profit": 28.047000000000004,
+      "stop": null,
+      "profit": null,
       "entry": null,
-      "add": 28.047000000000004,
+      "add": null,
       "ma5": 28.064,
       "ma10": 28.047000000000004,
       "ma20": 28.038500000000006,
-      "low_5d": 27.8,
-      "profit_rule": "ma10"
+      "low_5d": null,
+      "profit_rule": "etf_core",
+      "allow_roi_tp": false,
+      "roi_pct": -15.993975903614466,
+      "cost": 33.2
     },
     {
       "code": "2301",

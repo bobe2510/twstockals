@@ -46,11 +46,18 @@ git push -u origin main
 
 5. 確認 `config/my_targets.json`、`config/alert_rules.json` 有進 repo（不含密鑰）。
 
-## 排程（台北時間）
+## 排程（台北時間 Asia/Taipei = UTC+8）
 
-- 平日約 07–14 點：每小時 intraday  
-- 平日約 14:15：eod  
-- 每天約 20:00：multi（黃金／匯率／加密／美股觀測）
+GitHub `cron` 用 **UTC**；程式內時間窗／推播時間戳一律用 `Asia/Taipei`（`src_scripts/tw_time.py`），並設 `TZ=Asia/Taipei`。
+
+| 台北時間 | UTC cron | mode |
+|---------|----------|------|
+| 平日 ~09:05 | `5 1 * * 1-5` | intraday |
+| 平日 ~13:10 / 13:15 | `10 5` / `15 5` | close_confirm |
+| 平日 ~14:15 | `15 6 * * 1-5` | eod |
+| 每天 ~20:00 | `0 12 * * *` | multi |
+
+`pause_us_ib=true` 時：**不推**美股買點／「請匯款 IB」；報告仍可觀測。
 
 ## 限制（免費方案誠實說明）
 

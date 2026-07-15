@@ -64,6 +64,7 @@ jobs:
 
       - name: Run alerts
         env:
+          TZ: Asia/Taipei
           TWSTOCKALS_CLOUD: "1"
           TWSTOCKALS_WORKSPACE: ${{ github.workspace }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -85,13 +86,14 @@ jobs:
               "15 6 * * 1-5") MODE=eod ;;
               "0 12 * * *") MODE=multi ;;
               *)
-                H=$(date -u +%H)
-                M=$(date -u +%M)
-                if [ "$H" = "12" ]; then
+                # Fallback by Taipei wall-clock (TZ=Asia/Taipei)
+                H=$(date +%H)
+                M=$(date +%M)
+                if [ "$H" = "20" ]; then
                   MODE=multi
-                elif [ "$H" = "05" ]; then
+                elif [ "$H" = "13" ] && [ "$M" -ge 05 ] && [ "$M" -le 30 ]; then
                   MODE=close_confirm
-                elif [ "$H" = "06" ]; then
+                elif [ "$H" = "14" ]; then
                   MODE=eod
                 else
                   MODE=intraday
@@ -99,7 +101,7 @@ jobs:
                 ;;
             esac
           fi
-          echo "Selected mode=$MODE schedule='${SCHEDULE_CRON:-manual}' UTC=$(date -u +%H:%M)"
+          echo "Selected mode=$MODE schedule='${SCHEDULE_CRON:-manual}' Taipei=$(date +%H:%M) UTC=$(date -u +%H:%M)"
           python src_scripts/run_all_alerts.py --mode "$MODE" --force --force-notify --no-popup
 
       - name: Upload alert state artifact

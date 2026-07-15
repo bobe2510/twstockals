@@ -24,6 +24,15 @@ WORKSPACE = os.environ.get(
 API_KEYS_PATH = os.path.join(WORKSPACE, "config", "api_keys.json")
 ALERT_RULES_PATH = os.path.join(WORKSPACE, "config", "alert_rules.json")
 ALERT_STATE_PATH = os.path.join(WORKSPACE, "reports", "alert_state.json")
+NOTIFY_BATCH_PATH = os.path.join(WORKSPACE, "reports", "notify_batch_pending.json")
+
+sys.path.insert(0, os.path.join(WORKSPACE, "src_scripts"))
+from tw_time import taiwan_now  # noqa: E402
+
+
+def _now() -> datetime:
+    """Naive Taipei wall-clock for dedupe keys / timestamps (cloud-safe)."""
+    return taiwan_now().replace(tzinfo=None)
 
 
 def _load_json(path: str, default=None):
@@ -83,7 +92,7 @@ def _save_state(state: dict) -> None:
 
 
 def _dedupe_key(symbol: str, rule_id: str, day: Optional[str] = None) -> str:
-    day = day or datetime.now().strftime("%Y-%m-%d")
+    day = day or _now().strftime("%Y-%m-%d")
     return f"{day}|{symbol}|{rule_id}"
 
 
@@ -96,12 +105,14 @@ def already_sent(symbol: str, rule_id: str, cooldown_hours: Optional[float] = No
     entry = state.get("sent", {}).get(key)
     if not entry:
         # also accept any key with same symbol+rule within cooldown window
-        cutoff = datetime.now() - timedelta(hours=cooldown_hours)
+        cutoff = _now() - timedelta(hours=cooldown_hours)
         for k, v in state.get("sent", {}).items():
             parts = k.split("|")
             if len(parts) >= 3 and parts[1] == symbol and parts[2] == rule_id:
                 try:
                     ts = datetime.fromisoformat(v.get("ts", ""))
+                    if ts.tzinfo is not None:
+                        ts = ts.astimezone(taiwan_now().tzinfo).replace(tzinfo=None)
                     if ts >= cutoff:
                         return True
                 except ValueError:
@@ -109,7 +120,9 @@ def already_sent(symbol: str, rule_id: str, cooldown_hours: Optional[float] = No
         return False
     try:
         ts = datetime.fromisoformat(entry.get("ts", ""))
-        return datetime.now() - ts < timedelta(hours=cooldown_hours)
+        if ts.tzinfo is not None:
+            ts = ts.astimezone(taiwan_now().tzinfo).replace(tzinfo=None)
+        return _now() - ts < timedelta(hours=cooldown_hours)
     except ValueError:
         return True
 
@@ -119,15 +132,17 @@ def mark_sent(symbol: str, rule_id: str, urgency: str = "eod_action") -> None:
     state.setdefault("sent", {})
     key = _dedupe_key(symbol, rule_id)
     state["sent"][key] = {
-        "ts": datetime.now().isoformat(timespec="seconds"),
+        "ts": _now().isoformat(timespec="seconds"),
         "urgency": urgency,
     }
     # prune older than 14 days
-    cutoff = datetime.now() - timedelta(days=14)
+    cutoff = _now() - timedelta(days=14)
     pruned = {}
     for k, v in state["sent"].items():
         try:
             ts = datetime.fromisoformat(v.get("ts", ""))
+            if ts.tzinfo is not None:
+                ts = ts.astimezone(taiwan_now().tzinfo).replace(tzinfo=None)
             if ts >= cutoff:
                 pruned[k] = v
         except ValueError:
@@ -210,6 +225,87 @@ def send_email(subject: str, body: str, dry_run: Optional[bool] = None) -> bool:
         return False
 
 
+def _batch_enabled() -> bool:
+    return os.environ.get("TWSTOCKALS_BATCH_NOTIFY", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
+
+
+def _append_batch_item(
+    title: str,
+    body: str,
+    *,
+    symbol: str,
+    rule_id: str,
+    urgency: str,
+) -> None:
+    state = _load_json(NOTIFY_BATCH_PATH, {"items": []})
+    state.setdefault("items", []).append(
+        {
+            "ts": _now().isoformat(timespec="seconds"),
+            "title": title,
+            "body": body,
+            "symbol": symbol,
+            "rule_id": rule_id,
+            "urgency": urgency,
+        }
+    )
+    os.makedirs(os.path.dirname(NOTIFY_BATCH_PATH), exist_ok=True)
+    with open(NOTIFY_BATCH_PATH, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+def clear_notify_batch() -> None:
+    if os.path.exists(NOTIFY_BATCH_PATH):
+        os.remove(NOTIFY_BATCH_PATH)
+
+
+def flush_notify_batch(
+    title: str,
+    *,
+    force: bool = False,
+    dry_run: Optional[bool] = None,
+) -> bool:
+    """Merge pending batch items into one Telegram/Email."""
+    state = _load_json(NOTIFY_BATCH_PATH, {"items": []})
+    items = state.get("items") or []
+    if not items:
+        print("[notify] batch empty, nothing to flush")
+        return False
+
+    emergency = [x for x in items if x.get("urgency") == "emergency"]
+    normal = [x for x in items if x.get("urgency") != "emergency"]
+    parts: list[str] = []
+    if emergency:
+        parts.append("🚨 緊急")
+        for i, it in enumerate(emergency, 1):
+            parts.append(f"{i}. {it.get('title', '')}")
+            parts.append(str(it.get("body", "")).strip())
+            parts.append("")
+    if normal:
+        parts.append("📋 收盤後／觀測")
+        for i, it in enumerate(normal, 1):
+            parts.append(f"{i}. {it.get('title', '')}")
+            parts.append(str(it.get("body", "")).strip())
+            parts.append("")
+
+    body = "\n".join(parts).strip()
+    ok = notify(
+        title=title,
+        body=body[:3500],
+        symbol="BATCH",
+        rule_id="batch_digest",
+        urgency="emergency" if emergency else "eod_action",
+        force=force,
+        dry_run=dry_run,
+    )
+    clear_notify_batch()
+    return ok
+
+
 def notify(
     title: str,
     body: str,
@@ -223,7 +319,14 @@ def notify(
     """
     Send Telegram + Email. Returns True if at least one channel attempted/succeeded
     (including dry-run). Skips when deduped unless force=True.
+
+    When TWSTOCKALS_BATCH_NOTIFY=1, queues for flush_notify_batch() instead of sending.
     """
+    if _batch_enabled():
+        _append_batch_item(title, body, symbol=symbol, rule_id=rule_id, urgency=urgency)
+        print(f"[notify] batched {symbol}|{rule_id}: {title[:60]}")
+        return True
+
     if not force and already_sent(symbol, rule_id):
         print(f"[notify] skip deduped {symbol}|{rule_id}")
         return False

@@ -90,6 +90,10 @@
     "us_etf_buy_zone": {
       "urgency": "eod_action",
       "description": "美股ETF年線下試倉區"
+    },
+    "us_ib_go": {
+      "urgency": "eod_action",
+      "description": "美股布局窗→提醒匯款IB（僅 pause_us_ib=false 時推播）"
     }
   },
   "thresholds": {

@@ -20,10 +20,13 @@ LEVELS_PATH = os.path.join(WORKSPACE, "reports", "latest", "levels.json")
 ALERT_RULES_PATH = os.path.join(WORKSPACE, "config", "alert_rules.json")
 
 sys.path.insert(0, os.path.join(WORKSPACE, "src_scripts"))
+from tw_time import taiwan_now  # noqa: E402
 try:
     from notify import notify, load_alert_rules
+    from holding_rules import is_core_etf
 except Exception:
     notify = None
+    is_core_etf = lambda code, name="": False  # noqa: E731
 
     def load_alert_rules():
         if os.path.exists(ALERT_RULES_PATH):
@@ -283,6 +286,8 @@ def check_stop_level_breaches(
             continue
         if code in cleared:
             continue
+        if row.get("profit_rule") == "etf_core" or is_core_etf(code, row.get("name", "")):
+            continue
         stop = row.get("stop") or row.get("low_5d")
         if code not in price_map or stop is None:
             continue
@@ -313,7 +318,7 @@ def in_close_confirm_window(now, rules):
 
 
 def main():
-    now = datetime.now()
+    now = taiwan_now()
     current_hour = now.hour
     rules = apply_threshold_overrides()
 
@@ -325,10 +330,16 @@ def main():
 
     if not is_force and not close_confirm:
         if asset_window and not in_asset_session:
-            print("非多資產晚間視窗 (20:00~05:00) 且無 --force，退出。")
+            print(
+                f"非多資產晚間視窗 (台北 20:00~05:00) 且無 --force，退出。"
+                f" now={now.isoformat()}"
+            )
             sys.exit(0)
         if (not asset_window) and (not in_tw_session):
-            print("非盤中監控時間 (07:00 ~ 13:59) 且無 --force 參數，腳本默默退出。")
+            print(
+                f"非盤中監控時間 (台北 07:00 ~ 13:59) 且無 --force 參數，腳本默默退出。"
+                f" now={now.isoformat()}"
+            )
             sys.exit(0)
 
     no_popup = "--no-popup" in sys.argv
