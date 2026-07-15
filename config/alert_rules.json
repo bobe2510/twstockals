@@ -31,6 +31,10 @@
       "urgency": "eod_action",
       "description": "約08:30：前一日 EOD 有 0050／正2 建議操作則開盤前提醒"
     },
+    "crypto_noon": {
+      "urgency": "eod_action",
+      "description": "約12:00：BTC／ETH 午間價格／均線／偏重不加碼狀態"
+    },
     "watch_grade_b": {
       "urgency": "eod_action",
       "description": "觀測評等B＝允許小買（非必須）"

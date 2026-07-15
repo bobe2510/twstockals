@@ -71,6 +71,26 @@
       "sell_rule": "below_50ma",
       "sell_note": "破 50MA 可減（既有偏重則不加碼）",
       "push_windows": [
+        "crypto_noon",
+        "multi"
+      ],
+      "venue": "CEX"
+    },
+    "ETH-USD": {
+      "name": "Ethereum",
+      "buy_min_grade": "A",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 0,
+        "A": 0,
+        "S": 0
+      },
+      "pause_add_default": true,
+      "sell_rule": "below_50ma",
+      "sell_note": "破 50MA 可減（既有偏重則不加碼）",
+      "push_windows": [
+        "crypto_noon",
         "multi"
       ],
       "venue": "CEX"

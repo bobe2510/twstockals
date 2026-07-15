@@ -15,6 +15,8 @@ on:
     - cron: "5 1 * * 1-5"
     # ~10:30 TW：多資產上班窗（黃金／外匯｜台銀可執行）
     - cron: "30 2 * * 1-5"
+    # ~12:00 TW：BTC／ETH 午間狀態（每天，含假日）
+    - cron: "0 4 * * *"
     # ~13:10 TW：收盤確認破防守（避開延遲，早於 13:20）
     - cron: "10 5 * * 1-5"
     # ~13:15 TW：收盤確認備援（GitHub 排程常延遲／漏跑）
@@ -28,7 +30,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "all | preopen | intraday | close_confirm | eod | multi_day | multi"
+        description: "all | preopen | crypto_noon | intraday | close_confirm | eod | multi_day | multi"
         required: true
         default: "all"
 
@@ -96,6 +98,7 @@ jobs:
               "30 0 * * 1-5") MODE=preopen ;;
               "5 1 * * 1-5") MODE=intraday ;;
               "30 2 * * 1-5"|"0 7 * * 1-5") MODE=multi_day ;;
+              "0 4 * * *") MODE=crypto_noon ;;
               "10 5 * * 1-5"|"15 5 * * 1-5") MODE=close_confirm ;;
               "15 6 * * 1-5") MODE=eod ;;
               "30 12 * * *") MODE=multi ;;
@@ -104,6 +107,8 @@ jobs:
                 M=$(date +%M)
                 if [ "$H" = "08" ]; then
                   MODE=preopen
+                elif [ "$H" = "12" ]; then
+                  MODE=crypto_noon
                 elif [ "$H" = "20" ]; then
                   MODE=multi
                 elif [ "$H" = "10" ] || [ "$H" = "15" ]; then

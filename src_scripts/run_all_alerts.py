@@ -8,6 +8,7 @@ Modes:
   --mode close_confirm  ~13:10 近收盤確認破防守 + 出清倉停損停利 + 提早 EOD + 觀測評等
   --mode eod            position_levels + 觀測評等（≥門檻請買進）；寫入隔日 08:30 提醒
   --mode preopen        ~08:30 若前一日 EOD 有 0050／正2 操作 → 開盤前提醒
+  --mode crypto_noon    ~12:00 BTC／ETH 午間狀態（偏重不加碼）
   --mode multi_day      上班窗：黃金／外匯（台銀可執行）
   --mode multi          晚間：黃金複核 + BTC + 美股觀測 + 觀測評等
 """
@@ -53,6 +54,7 @@ def main():
             "close_confirm",
             "eod",
             "preopen",
+            "crypto_noon",
             "multi",
             "multi_day",
         ],
@@ -125,6 +127,12 @@ def main():
             pargs.append("--force")
         codes.append(run_script("scan_preopen_reminder.py", pargs))
 
+    if args.mode == "crypto_noon":
+        cargs = list(common)
+        if "--force" not in cargs:
+            cargs.append("--force")
+        codes.append(run_script("scan_crypto_noon.py", cargs))
+
     if args.mode == "multi_day":
         margs = list(common)
         if "--force" not in margs:
@@ -151,6 +159,7 @@ def main():
         "close_confirm": f"收盤確認 {tw.strftime('%m/%d %H:%M')}（台北）",
         "eod": f"收盤執行 {tw.strftime('%m/%d %H:%M')}（台北）",
         "preopen": f"開盤前提醒 {tw.strftime('%m/%d %H:%M')}（台北）",
+        "crypto_noon": f"BTC／ETH 午間 {tw.strftime('%m/%d %H:%M')}（台北）",
         "multi_day": f"多資產上班窗 {tw.strftime('%m/%d %H:%M')}（台北）",
         "multi": f"多資產晚報 {tw.strftime('%m/%d %H:%M')}（台北）",
         "all": f"警報整合 {tw.strftime('%m/%d %H:%M')}（台北）",
