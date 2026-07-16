@@ -65,19 +65,17 @@ jobs:
             echo '{"products":{}}' > config/grade_buy_policy.json
           fi
 
+      # deploy_ladder_state：手動對帳／git 為準，勿用 cache 覆寫（舊 cache 曾誤把「推播」當「已買」）
       - name: Restore alert state cache
         uses: actions/cache@v5
         with:
           path: |
             reports/alert_state.json
-            reports/latest/deploy_ladder_state.json
             reports/latest/eod_pending_ops.json
             reports/latest/close_confirm_ran.json
-          key: alert-state-v3-${{ github.run_id }}
+          key: alert-state-v4-${{ github.run_id }}
           restore-keys: |
-            alert-state-v3-
-            alert-state-v2-
-            alert-state-
+            alert-state-v4-
 
       - name: Run alerts
         env:

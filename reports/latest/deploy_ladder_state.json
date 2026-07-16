@@ -1,6 +1,6 @@
 {
   "version": 1,
   "updated_at": null,
-  "note": "每商品同一持倉週期：invested_twd／max_grade_filled；出場訊號重置。可手動對帳覆寫。",
+  "note": "僅在手動對帳／匯報成交後更新（推播提醒≠已買）。每商品同一持倉週期：invested_twd／max_grade_filled；出場訊號重置。",
   "products": {}
 }
