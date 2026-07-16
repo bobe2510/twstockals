@@ -18,7 +18,7 @@ PENDING_PATH = os.path.join(WORKSPACE, "reports", "latest", "eod_pending_ops.jso
 CORE_OPS_CODES = frozenset({"0050", "00631L"})
 
 _ACTION_RE = re.compile(
-    r"(減碼|空倉|加碼|小加|小減|請買進|請加碼|進場|達標停利|移動減|賣約|先賣|再賣|可小加|可小減)"
+    r"(減碼|空倉|加碼|小加|小減|請買進|請加碼|允許買進|建議買進|強烈建議|進場|達標停利|移動減|賣約|先賣|再賣|可小加|可小減)"
 )
 _HOLD_ONLY_RE = re.compile(r"(續抱|禁止加碼|不加碼|底倉續抱|僅深拉回|無急迫)")
 

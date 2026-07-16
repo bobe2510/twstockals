@@ -212,6 +212,10 @@ def main() -> None:
         print(f"無出清監控持股；報告已寫 {REPORT_PATH}")
         sys.exit(0)
 
+    if not actions:
+        print(f"出清倉無具體動作；報告已寫 {REPORT_PATH}（不推播）")
+        sys.exit(0)
+
     body = [
         f"時間：{now.strftime('%Y-%m-%d %H:%M')}（台北）",
         f"出清監控 {len(portfolio)} 檔（僅台股）",
@@ -224,14 +228,14 @@ def main() -> None:
     body.append("執行：收盤確認後／隔日開盤；開盤 09:00~09:30 不殺。")
 
     notify(
-        title=f"出清倉停損停利 {now.strftime('%m/%d %H:%M')}（{len(portfolio)} 檔）",
+        title=f"出清倉停損停利 {now.strftime('%m/%d %H:%M')}（{len(actions)} 項）",
         body="\n".join(body),
         symbol="EXIT_WATCH",
         rule_id="exit_watch_1310",
         urgency="eod_action",
         force=("--force-notify" in sys.argv),
     )
-    print(f"出清倉通知已推：{len(portfolio)} 檔｜{REPORT_PATH}")
+    print(f"出清倉通知已推：{len(actions)} 項／{len(portfolio)} 檔｜{REPORT_PATH}")
 
 
 if __name__ == "__main__":

@@ -169,16 +169,67 @@ def ladder_amount_for_grade(code: str, grade: str, policy: Optional[dict] = None
 
 def buy_stance(grade: str, code: str, policy: Optional[dict] = None) -> Optional[str]:
     """
-    Returns:
-      None — below min, do not push buy
-      'buy' — at min threshold → 請買進
-      'prefer' — above min → 較推薦
+    依回測門檻差異回傳語氣（越高越強）：
+      None — 低於 buy_min_grade，不推買
+      'allow' — 剛好達門檻 → 允許買進（回測可買級｜非必須）
+      'recommend' — 高於門檻但未到 S → 建議買進（回測較優級）
+      'strong' — 評等 S（或門檻本就是 S）→ 強烈建議買進（回測實證高）
+
+    相容舊碼：'buy'≈allow、'prefer'≈recommend／strong（請改用 push_verb）。
     """
     if not meets_buy_min(grade, code, policy):
         return None
-    if is_above_min(grade, code, policy):
-        return "prefer"
-    return "buy"
+    g = str(grade).upper()
+    if g == "S":
+        return "strong"
+    if is_above_min(g, code, policy):
+        return "recommend"
+    return "allow"
+
+
+def push_verb(
+    stance: Optional[str],
+    *,
+    action: str = "enter",
+    kind: str = "buy",
+) -> str:
+    """
+    統一推播動詞。
+    kind: buy（一般買進）｜fx（囤匯）｜add 時忽略 stance 直接「請加碼」。
+    """
+    if action == "add" or kind == "add":
+        return "請加碼"
+    # 相容舊 stance
+    if stance in ("buy",):
+        stance = "allow"
+    if stance in ("prefer",):
+        stance = "recommend"
+    if kind == "fx":
+        return {
+            "allow": "允許囤匯（回測可買級｜非必須）",
+            "recommend": "建議囤匯（回測較優級）",
+            "strong": "強烈建議囤匯（回測實證高）",
+        }.get(str(stance or ""), "允許囤匯（回測可買級｜非必須）")
+    return {
+        "allow": "允許買進（回測可買級｜非必須）",
+        "recommend": "建議買進（回測較優級）",
+        "strong": "強烈建議買進（回測實證高）",
+    }.get(str(stance or ""), "允許買進（回測可買級｜非必須）")
+
+
+def push_short_label(stance: Optional[str], *, action: str = "enter") -> str:
+    """標題用短標籤。"""
+    if action == "add":
+        return "請加碼"
+    if stance in ("buy",):
+        stance = "allow"
+    if stance in ("prefer",):
+        stance = "recommend"
+    return {
+        "allow": "允許買進",
+        "recommend": "建議買進",
+        "strong": "強烈建議買進",
+    }.get(str(stance or ""), "允許買進")
 
 
 def load_ladder_state() -> dict:
@@ -374,7 +425,7 @@ def next_ladder_action(
                 or (kind == "routine" and snap["routine_remaining"] <= 0)
             ) else base.get("blocked")
             return base
-        stance = "prefer" if is_above_min(g, code, policy) else "buy"
+        stance = buy_stance(g, code, policy) or "allow"
         return _ok("enter", stance, amt)
 
     # 同階或更低：不重複
@@ -386,13 +437,13 @@ def next_ladder_action(
         amt = _cap(ladder_amount_for_grade(code, g, policy))
         if amt <= 0:
             return base
-        return _ok("add", "prefer", amt)
+        return _ok("add", buy_stance(g, code, policy) or "recommend", amt)
 
     # flat：升級只改語氣、不加碼 → 不推金額
     return {
         **base,
         "action": "none",
-        "stance": "prefer",
+        "stance": buy_stance(g, code, policy) or "recommend",
         "suggest_twd": 0,
         "blocked": "flat_no_add",
     }

@@ -164,6 +164,23 @@ def main() -> None:
     with open(REPORT_PATH, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
+    # 僅急跌／破 50MA／報價失敗才推；純「持有偏重」不吵
+    actionable = False
+    for q in (btc, eth):
+        if not q:
+            actionable = True
+            break
+        if q["change_pct"] <= shock:
+            actionable = True
+            break
+        if q.get("ma50") is not None and q["price"] < q["ma50"]:
+            actionable = True
+            break
+
+    if not actionable:
+        print(f"加密午間無急跌／破季線訊號；報告已寫 {REPORT_PATH}（不推播）")
+        return
+
     body = [
         f"午間加密（{now.strftime('%m/%d %H:%M')} 台北）",
         f"加碼：{'暫停' if pause_add else '可依門檻評估'}",
@@ -171,9 +188,8 @@ def main() -> None:
     ]
     body += [f"• {b}" for b in bullets]
     body.append("")
-    body.append("規則：偏重不加；急跌不追；破50MA 才考慮減。")
+    body.append("規則：偏重不加；急跌不追；破50MA 可減。")
 
-    # 急跌用較高優先；否則一般 digest
     urg = "emergency" if any(
         q and q["change_pct"] <= shock for q in (btc, eth)
     ) else "eod_action"

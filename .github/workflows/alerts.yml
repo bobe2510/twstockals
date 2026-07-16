@@ -72,8 +72,10 @@ jobs:
             reports/alert_state.json
             reports/latest/deploy_ladder_state.json
             reports/latest/eod_pending_ops.json
-          key: alert-state-v2-${{ github.run_id }}
+            reports/latest/close_confirm_ran.json
+          key: alert-state-v3-${{ github.run_id }}
           restore-keys: |
+            alert-state-v3-
             alert-state-v2-
             alert-state-
 
@@ -93,13 +95,15 @@ jobs:
           SCHEDULE_CRON: ${{ github.event.schedule }}
         run: |
           MODE="${{ github.event.inputs.mode }}"
+          EXTRA=""
           if [ -z "$MODE" ]; then
             case "$SCHEDULE_CRON" in
               "30 0 * * 1-5") MODE=preopen ;;
               "5 1 * * 1-5") MODE=intraday ;;
               "30 2 * * 1-5"|"0 7 * * 1-5") MODE=multi_day ;;
               "0 4 * * *") MODE=crypto_noon ;;
-              "10 5 * * 1-5"|"15 5 * * 1-5") MODE=close_confirm ;;
+              "10 5 * * 1-5") MODE=close_confirm ;;
+              "15 5 * * 1-5") MODE=close_confirm; EXTRA="--backup" ;;
               "15 6 * * 1-5") MODE=eod ;;
               "30 12 * * *") MODE=multi ;;
               *)
@@ -113,8 +117,11 @@ jobs:
                   MODE=multi
                 elif [ "$H" = "10" ] || [ "$H" = "15" ]; then
                   MODE=multi_day
-                elif [ "$H" = "13" ] && [ "$M" -ge 05 ] && [ "$M" -le 30 ]; then
+                elif [ "$H" = "13" ] && [ "$M" -ge 05 ] && [ "$M" -le 12 ]; then
                   MODE=close_confirm
+                elif [ "$H" = "13" ] && [ "$M" -ge 13 ] && [ "$M" -le 30 ]; then
+                  MODE=close_confirm
+                  EXTRA="--backup"
                 elif [ "$H" = "14" ]; then
                   MODE=eod
                 else
@@ -123,9 +130,10 @@ jobs:
                 ;;
             esac
           fi
-          echo "Selected mode=$MODE schedule='${SCHEDULE_CRON:-manual}' Taipei=$(date +%H:%M) UTC=$(date -u +%H:%M)"
+          echo "Selected mode=$MODE extra='$EXTRA' schedule='${SCHEDULE_CRON:-manual}' Taipei=$(date +%H:%M) UTC=$(date -u +%H:%M)"
           PYTHONPATH=src_scripts python -c "from tw_time import taiwan_now; import os; print('taiwan_now', taiwan_now().isoformat(), 'TZ', os.environ.get('TZ'))"
-          python src_scripts/run_all_alerts.py --mode "$MODE" --force --force-notify --no-popup
+          # 排程不帶 --force-notify，保留 alert_state 去重；手動除錯可自行加
+          python src_scripts/run_all_alerts.py --mode "$MODE" --force --no-popup $EXTRA
 
       - name: Upload alert state artifact
         if: always()
@@ -136,5 +144,6 @@ jobs:
             reports/alert_state.json
             reports/latest/deploy_ladder_state.json
             reports/latest/eod_pending_ops.json
+            reports/latest/close_confirm_ran.json
           if-no-files-found: ignore
           retention-days: 7

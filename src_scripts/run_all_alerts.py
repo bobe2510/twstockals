@@ -5,16 +5,17 @@ Unified alert runner for cloud / local cron.
 Modes:
   --mode all            black_swan + close_confirm + position_levels + multi_asset
   --mode intraday       black_swan only（大盤／匯率／反1；不推個股破防守）
-  --mode close_confirm  ~13:10 近收盤確認破防守 + 出清倉停損停利 + 提早 EOD + 觀測評等
+  --mode close_confirm  ~13:10 近收盤確認破防守 + 出清倉停損停利（不含完整 EOD／觀測買點）
   --mode eod            position_levels + 觀測評等（≥門檻請買進）；寫入隔日 08:30 提醒
   --mode preopen        ~08:30 若前一日 EOD 有 0050／正2 操作 → 開盤前提醒
-  --mode crypto_noon    ~12:00 BTC／ETH 午間狀態（偏重不加碼）
+  --mode crypto_noon    ~12:00 BTC／ETH 午間狀態（偏重不加碼；有訊號才推）
   --mode multi_day      上班窗：黃金／外匯（台銀可執行）
-  --mode multi          晚間：黃金複核 + BTC + 美股觀測 + 觀測評等
+  --mode multi          晚間：黃金複核 + BTC/ETH + 美股觀測 + 觀測評等
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -26,6 +27,7 @@ except Exception:
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SCRIPTS = os.path.join(ROOT, "src_scripts")
+MARKER_PATH = os.path.join(ROOT, "reports", "latest", "close_confirm_ran.json")
 sys.path.insert(0, SCRIPTS)
 from notify import clear_notify_batch, flush_notify_batch  # noqa: E402
 from tw_time import taiwan_now  # noqa: E402
@@ -42,6 +44,29 @@ def run_script(name: str, extra_args: list[str]) -> int:
     proc = subprocess.run(cmd, cwd=ROOT, env=env)
     print(f"=== EXIT {name} code={proc.returncode} ===")
     return proc.returncode
+
+
+def _mark_close_confirm() -> None:
+    os.makedirs(os.path.dirname(MARKER_PATH), exist_ok=True)
+    now = taiwan_now()
+    with open(MARKER_PATH, "w", encoding="utf-8") as f:
+        json.dump(
+            {"date": now.strftime("%Y-%m-%d"), "at": now.isoformat(timespec="seconds")},
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
+
+
+def _close_confirm_already_ran_today() -> bool:
+    if not os.path.exists(MARKER_PATH):
+        return False
+    try:
+        with open(MARKER_PATH, "r", encoding="utf-8") as f:
+            doc = json.load(f)
+        return str(doc.get("date") or "") == taiwan_now().strftime("%Y-%m-%d")
+    except Exception:
+        return False
 
 
 def main():
@@ -61,7 +86,16 @@ def main():
         default="all",
     )
     parser.add_argument("--force", action="store_true", help="Pass --force to child scripts")
-    parser.add_argument("--force-notify", action="store_true")
+    parser.add_argument(
+        "--force-notify",
+        action="store_true",
+        help="繞過去重（僅手動除錯用；排程勿開）",
+    )
+    parser.add_argument(
+        "--backup",
+        action="store_true",
+        help="13:15 備援：若今日 close_confirm 已跑過則略過",
+    )
     parser.add_argument("--no-popup", action="store_true", default=True)
     args = parser.parse_args()
 
@@ -70,6 +104,10 @@ def main():
         f"{taiwan_now().isoformat(timespec='seconds')} (Asia/Taipei)"
     )
     print(f"workspace={ROOT}")
+
+    if args.mode == "close_confirm" and args.backup and _close_confirm_already_ran_today():
+        print("close_confirm 備援：今日已跑過，略過（降噪）")
+        sys.exit(0)
 
     clear_notify_batch()
 
@@ -89,6 +127,8 @@ def main():
         codes.append(run_script("scan_black_swan.py", sw))
 
     if args.mode in ("all", "close_confirm"):
+        # 輕量刷新 levels，避免雲端用過期 as_of 判停損
+        codes.append(run_script("refresh_levels_live.py", []))
         sw = list(common)
         if args.no_popup:
             sw.append("--no-popup")
@@ -100,16 +140,11 @@ def main():
         if "--force" not in xargs:
             xargs.append("--force")
         codes.append(run_script("scan_exit_watch.py", xargs))
-        eargs = list(common)
-        if "--force" not in eargs:
-            eargs.append("--force")
-        codes.append(run_script("scan_position_levels.py", eargs))
-        wargs = list(common)
-        if "--force" not in wargs:
-            wargs.append("--force")
-        codes.append(run_script("scan_watch_grades.py", wargs))
+        # 完整 EOD／觀測買點改由 14:15 eod 負責，避免與 close_confirm 重複推播
+        _mark_close_confirm()
 
     if args.mode in ("all", "eod"):
+        codes.append(run_script("refresh_levels_live.py", []))
         eargs = list(common)
         if "--force" not in eargs:
             eargs.append("--force")

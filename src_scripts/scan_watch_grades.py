@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 觀測標的統一買點評等（比照黃金 D/C/B/A/S）：
-  D/C = 觀望（0）
-  B   = 允許小買（非必須）
-  A/S = 較推薦分批
+  低於 buy_min → 觀望
+  =門檻 → 允許買進（回測可買級｜非必須）
+  高於門檻 → 建議買進（回測較優級）
+  S → 強烈建議買進（回測實證高）
 
 涵蓋 approved_universe / watchlist：0050、00631L、VOO、VXUS、QQQ、QQQM 等。
 """
@@ -38,7 +39,10 @@ from grade_buy_policy import (  # noqa: E402
     format_cash_pool_footer,
     load_grade_buy_policy,
     load_ladder_state,
+    meets_buy_min,
     product_policy,
+    push_short_label,
+    push_verb,
     record_ladder_fill,
     reset_ladder_cycle,
 )
@@ -309,21 +313,23 @@ def grade_growth_us(s: dict, name: str, cash_cap: int, pause_ib: bool) -> dict:
     return _g("D", f"{name}：無清楚買點。{suffix}", 0, None, stab, bias50, bias50, bias200, bias200)
 
 
-def us_ib_go_signal(s: dict, g: dict, *, code: str) -> tuple[bool, str]:
+def us_ib_go_signal(s: dict, g: dict, *, code: str, policy: Optional[dict] = None) -> tuple[bool, str]:
     """
-    美股「可開始布局／偏多」窗（僅 pause_us_ib=false 時才推播）。
-    條件（擇一）：評等 A/S；年線上＋回測季線止穩；年線下深回撤止穩。
+    美股「可開始布局／匯款 IB」窗（僅 pause_us_ib=false 時才推播）。
+    必須達該商品 buy_min_grade（VOO/VXUS≥S、QQQ≥B），避免低於門檻仍催匯款。
     """
+    grade = str(g.get("grade") or "")
+    if not grade or not meets_buy_min(grade, code, policy):
+        return False, ""
+    min_g = product_policy(code, policy).get("buy_min_grade") or "?"
+    stab = bool(g.get("stabilized")) or _stabilized(s)
     px = s.get("price")
     ma50, ma200 = s.get("ma50"), s.get("ma200")
-    stab = bool(g.get("stabilized")) or _stabilized(s)
-    grade = g.get("grade")
     bias50 = (px - ma50) / ma50 * 100 if ma50 and px else None
     bias200 = (px - ma200) / ma200 * 100 if ma200 and px else None
 
     if grade in ("A", "S"):
-        return True, f"{code} 評等 {grade}（深拉回／月線區）"
-    # 多頭結構：站上年線 + 回測季線附近止穩
+        return True, f"{code} 評等 {grade}≥門檻{min_g}（深拉回／月線區）"
     if (
         ma200
         and px
@@ -332,15 +338,9 @@ def us_ib_go_signal(s: dict, g: dict, *, code: str) -> tuple[bool, str]:
         and -3.0 <= bias50 <= 1.5
         and stab
     ):
-        return True, f"{code} 年線上＋回測季線止穩（多頭加碼窗）"
-    # 深跌後止穩
+        return True, f"{code} 評等 {grade}≥{min_g}｜年線上＋回測季線止穩"
     if bias200 is not None and bias200 <= -8 and stab:
-        return True, f"{code} 年線下深回撤 {bias200:+.1f}% 且止穩"
-    # 核心底倉評等 B 且靠近月線（VOO/VXUS）
-    if code in ("VOO", "VXUS") and grade == "B" and stab:
-        b20 = g.get("bias20")
-        if b20 is not None and -4 <= float(b20) <= 1.5:
-            return True, f"{code} 評等 B＋月線區止穩（可開始分批）"
+        return True, f"{code} 評等 {grade}≥{min_g}｜年線下深回撤 {bias200:+.1f}% 止穩"
     return False, ""
 
 
@@ -436,8 +436,9 @@ def main():
         f"**剩餘機會金 {pool_snap['opportunity_remaining']:,}** 元  \n"
     )
     lines.append(
-        "> 評等維持真實 D/C/B/A/S；推播僅 **≥該商品回測門檻**：\n"
-        "> 首次=**請買進（進場）**；ladder 升級=**請加碼**；flat 升級只改語氣不加碼。  \n"
+        "> 評等維持真實 D/C/B/A/S；推播語氣依回測級距：\n"
+        "> **允許買進**（=門檻）／**建議買進**（較優）／**強烈建議買進**（S・實證高）；"
+        "ladder 升級=**請加碼**；flat 升級只改語氣不加碼。  \n"
         "> 個股破防守仍只在收盤確認窗推播。  \n\n"
     )
 
@@ -457,7 +458,7 @@ def main():
         elif code in ("QQQ", "QQQM") or item.get("role") in ("growth", "growth_alt", "satellite"):
             g = grade_growth_us(s, name, cash, pause_ib=False)
             if (not pause_ib) and market == "US":
-                go, go_why = us_ib_go_signal(s, g, code=code)
+                go, go_why = us_ib_go_signal(s, g, code=code, policy=policy)
                 if go:
                     us_ib_go.append(go_why)
         else:
@@ -468,7 +469,7 @@ def main():
                 cash_cap=cash,
             )
             if market == "US" and not pause_ib:
-                go, go_why = us_ib_go_signal(s, g, code=code)
+                go, go_why = us_ib_go_signal(s, g, code=code, policy=policy)
                 if go:
                     us_ib_go.append(go_why)
 
@@ -520,17 +521,16 @@ def main():
             lines.append("* **出場重置**：破防守均線，階梯進度已清零  \n")
         lines.append(f"\n### 評等 **{g['grade']}**｜")
         title = None
+        verb = push_verb(stance, action=action if action in ("enter", "add") else "enter")
+        short = push_short_label(stance, action=action if action in ("enter", "add") else "enter")
         if (not exit_hit) and action == "add" and g["suggest_twd"] > 0:
-            lines.append(f"**請加碼** **{g['suggest_twd']:,}** 元\n\n")
-            title = f"{code}評等{g['grade']}｜請加碼（{g['suggest_twd']//10000}萬）"
-        elif (not exit_hit) and action == "enter" and stance == "prefer" and g["suggest_twd"] > 0:
-            lines.append(f"**較推薦請買進（進場）** **{g['suggest_twd']:,}** 元\n\n")
-            title = f"{code}評等{g['grade']}｜較推薦請買進（進場{g['suggest_twd']//10000}萬）"
+            lines.append(f"**{verb}** **{g['suggest_twd']:,}** 元\n\n")
+            title = f"{code}評等{g['grade']}｜{short}（{g['suggest_twd']//10000}萬）"
         elif (not exit_hit) and action == "enter" and g["suggest_twd"] > 0:
-            lines.append(f"**請買進（進場）** **{g['suggest_twd']:,}** 元\n\n")
-            title = f"{code}評等{g['grade']}｜請買進（進場{g['suggest_twd']//10000}萬）"
-        elif stance == "prefer" and applied.get("blocked") == "flat_no_add":
-            lines.append("**較推薦**（flat：升級不加碼，本次 **0** 元）\n\n")
+            lines.append(f"**{verb}** **{g['suggest_twd']:,}** 元\n\n")
+            title = f"{code}評等{g['grade']}｜{short}（進場{g['suggest_twd']//10000}萬）"
+        elif stance in ("recommend", "strong", "prefer") and applied.get("blocked") == "flat_no_add":
+            lines.append(f"**{short}**（flat：升級不加碼，本次 **0** 元）\n\n")
         elif g["grade"] in ("B", "A", "S") and applied.get("blocked"):
             lines.append("**觀測**（暫停新資金／示意 0 元）\n\n")
         else:
@@ -545,9 +545,6 @@ def main():
         lines.append("\n")
 
         if title and action in ("enter", "add") and g["suggest_twd"] > 0:
-            verb = "請加碼" if action == "add" else (
-                "較推薦請買進（進場）" if stance == "prefer" else "請買進（進場）"
-            )
             msg = (
                 f"{g['reason']}\n"
                 f"現價 {s['price']:.2f} ({s['change_pct']:+.2f}%)｜"
@@ -556,7 +553,15 @@ def main():
                 f"{entry_txt}\n"
                 f"執行：收盤後／隔日開盤（EOD）。"
             )
-            rule = "watch_grade_a" if action == "add" or stance == "prefer" else "watch_grade_b"
+            rule = (
+                "watch_grade_s"
+                if stance == "strong"
+                else (
+                    "watch_grade_a"
+                    if action == "add" or stance in ("recommend", "prefer")
+                    else "watch_grade_b"
+                )
+            )
             actions.append((code, rule, title, msg))
             ladder_state = record_ladder_fill(
                 code, g["grade"], g["suggest_twd"], action, state=ladder_state
@@ -608,15 +613,16 @@ def main():
     lines.append("## 推播摘要\n\n")
     if actions:
         for code, rule, title, _ in actions:
-            tag = (
-                "匯款IB"
-                if rule == "us_ib_go"
-                else (
-                    "較推薦"
-                    if "較推薦" in title
-                    else ("請買進" if "請買進" in title else "觀測")
-                )
-            )
+            if rule == "us_ib_go":
+                tag = "匯款IB"
+            elif "強烈" in title:
+                tag = "強烈建議"
+            elif "建議買進" in title or "請加碼" in title:
+                tag = "建議"
+            elif "允許" in title:
+                tag = "允許"
+            else:
+                tag = "觀測"
             lines.append(f"* [{tag}] **{title}**\n")
     else:
         lines.append("* 無達門檻可推項目（或暫停IB）。\n")

@@ -35,6 +35,8 @@ from grade_buy_policy import (  # noqa: E402
     load_grade_buy_policy,
     load_ladder_state,
     product_policy,
+    push_short_label,
+    push_verb,
     record_ladder_fill,
     reset_ladder_cycle,
 )
@@ -283,14 +285,15 @@ def main():
     ladder_state = load_ladder_state()
     pool_snap = cash_pool_snapshot(ladder_state, policy)
     lines.append(
-        f"可運用現金約 **{cash:,}** 元｜門檻推播：≥該商品 buy_min_grade 才「請買進」  \n"
+        f"可運用現金約 **{cash:,}** 元｜門檻推播：≥該商品 buy_min_grade 才推買  \n"
     )
     lines.append(
         f"常態池 **{pool_snap['routine_budget']:,}**（剩 {pool_snap['routine_remaining']:,}）｜"
         f"**剩餘機會金 {pool_snap['opportunity_remaining']:,}**／池 {pool_snap['opportunity_budget']:,}  \n"
     )
     lines.append(
-        "> 評等維持真實 D/C/B/A/S；首次達門檻=**請買進（進場）**；"
+        "> 評等維持真實 D/C/B/A/S；語氣依回測級距："
+        "**允許買進**／**建議買進**／**強烈建議買進（S）**；"
         "ladder 升級=**請加碼**；flat 升級只改語氣不加碼。  \n\n"
     )
 
@@ -335,14 +338,14 @@ def main():
             f"｜已填階 **{filled or '—'}**  \n"
         )
         lines.append(f"\n### 評等 **{g['grade']}**｜")
+        verb = push_verb(stance, action=action if action in ("enter", "add") else "enter")
+        short = push_short_label(stance, action=action if action in ("enter", "add") else "enter")
         if action == "add" and g["suggest_twd"] > 0:
-            lines.append(f"**請加碼**，本次 **{g['suggest_twd']:,}** 元\n\n")
-        elif action == "enter" and stance == "prefer" and g["suggest_twd"] > 0:
-            lines.append(f"**較推薦請買進（進場）**，本次 **{g['suggest_twd']:,}** 元\n\n")
+            lines.append(f"**{verb}**，本次 **{g['suggest_twd']:,}** 元\n\n")
         elif action == "enter" and g["suggest_twd"] > 0:
-            lines.append(f"**請買進（進場）**，本次 **{g['suggest_twd']:,}** 元\n\n")
-        elif stance == "prefer" and applied.get("blocked") == "flat_no_add":
-            lines.append("**較推薦**（flat：升級不加碼，本次 **0** 元）\n\n")
+            lines.append(f"**{verb}**，本次 **{g['suggest_twd']:,}** 元\n\n")
+        elif stance in ("recommend", "strong", "prefer") and applied.get("blocked") == "flat_no_add":
+            lines.append(f"**{short}**（flat：升級不加碼，本次 **0** 元）\n\n")
         elif g["grade"] in ("B", "A", "S") and room <= 0:
             lines.append("預算已滿／無剩餘額度（**0** 元）\n\n")
         else:
@@ -370,18 +373,16 @@ def main():
                 )
         elif action in ("enter", "add") and g["suggest_twd"] > 0:
             wan = g["suggest_twd"] // 10000
-            if action == "add":
-                title = f"黃金評等{g['grade']}｜請加碼（{wan}萬）"
-                rule = "gold_buy_grade_a"
-                verb = "請加碼"
-            elif stance == "prefer":
-                title = f"黃金評等{g['grade']}｜較推薦請買進（進場{wan}萬）"
-                rule = "gold_buy_grade_a"
-                verb = "較推薦請買進（進場）"
-            else:
-                title = f"黃金評等{g['grade']}｜請買進（進場{wan}萬）"
-                rule = "gold_buy_grade_b"
-                verb = "請買進（進場）"
+            title = f"黃金評等{g['grade']}｜{short}（{wan}萬）"
+            rule = (
+                "gold_buy_grade_s"
+                if stance == "strong"
+                else (
+                    "gold_buy_grade_a"
+                    if action == "add" or stance in ("recommend", "prefer")
+                    else "gold_buy_grade_b"
+                )
+            )
             msg = (
                 f"評等 {g['grade']}（門檻≥{min_g}）：**{verb}**，"
                 f"本次約 **{g['suggest_twd']:,}** 元"
@@ -429,15 +430,23 @@ def main():
         lines.append(f"* {ug['reason']}  \n")
 
         if action in ("enter", "add") and amt > 0:
-            if action == "add":
-                title = f"美金評等{ug['grade']}｜請加碼囤匯（{amt // 10000}萬）"
-                verb = "請加碼"
-            elif stance == "prefer":
-                title = f"美金評等{ug['grade']}｜較推薦囤匯（進場{amt // 10000}萬）"
-                verb = "較推薦囤匯（進場）"
-            else:
-                title = f"美金評等{ug['grade']}｜請囤匯（進場{amt // 10000}萬）"
-                verb = "請囤匯（進場）"
+            verb = push_verb(
+                stance,
+                action=action,
+                kind="add" if action == "add" else "fx",
+            )
+            short = (
+                "請加碼囤匯"
+                if action == "add"
+                else {
+                    "allow": "允許囤匯",
+                    "buy": "允許囤匯",
+                    "recommend": "建議囤匯",
+                    "prefer": "建議囤匯",
+                    "strong": "強烈建議囤匯",
+                }.get(str(stance or ""), "允許囤匯")
+            )
+            title = f"美金評等{ug['grade']}｜{short}（{amt // 10000}萬）"
             msg = (
                 f"USD/TWD {fx:.4f}｜評等 {ug['grade']}（門檻≥{min_g}）。\n"
                 f"{ug['reason']}\n"
@@ -449,8 +458,8 @@ def main():
             ladder_state = record_ladder_fill(
                 "USDTWD", ug["grade"], amt, action, state=ladder_state
             )
-        elif stance == "prefer" and applied.get("blocked") == "flat_no_add":
-            lines.append("* **狀態**：較推薦（flat：升級不加碼）。  \n")
+        elif stance in ("recommend", "strong", "prefer") and applied.get("blocked") == "flat_no_add":
+            lines.append("* **狀態**：建議級（flat：升級不加碼）。  \n")
         elif bias200 is not None and bias200 >= 1.5:
             sell_note = product_policy("USDTWD", policy).get("sell_note") or (
                 "美元偏強，暫不囤匯"
@@ -545,6 +554,22 @@ def main():
             lines.append(f"* 200MA：{btc['ma200']:,.2f}（乖離 {bias200:+.2f}%）  \n")
         if pause_crypto_add:
             lines.append("* **加碼：暫停**（既有部位已偏高）。建議金額 **0**。  \n")
+        if btc.get("ma50") and btc["price"] < btc["ma50"]:
+            sell_note = product_policy("BTC-USD", policy).get("sell_note") or (
+                "破 50MA 可減（既有偏重則不加碼）"
+            )
+            bias50 = (btc["price"] - btc["ma50"]) / btc["ma50"] * 100
+            lines.append(f"* **出場參考**：{sell_note}  \n")
+            actions.append(
+                (
+                    "BTC",
+                    "crypto_sell_zone",
+                    "eod_action",
+                    "BTC 破季線可減",
+                    f"{sell_note}\n現價 {btc['price']:,.2f} < 50MA {btc['ma50']:,.2f}"
+                    f"（乖離 {bias50:+.1f}%）。不加碼；反彈再評估減碼。",
+                )
+            )
         if btc["change_pct"] <= btc_shock:
             msg = f"BTC 急跌 {btc['change_pct']:+.2f}%（閾值 {btc_shock}%）。"
             actions.append(("BTC", "asset_shock", "emergency", "BTC 急跌警戒", msg))
@@ -567,7 +592,18 @@ def main():
             sell_note = product_policy("ETH-USD", policy).get("sell_note") or (
                 "破 50MA 可減（既有偏重則不加碼）"
             )
+            bias50 = (eth["price"] - eth["ma50"]) / eth["ma50"] * 100
             lines.append(f"* **出場參考**：{sell_note}  \n")
+            actions.append(
+                (
+                    "ETH",
+                    "crypto_sell_zone",
+                    "eod_action",
+                    "ETH 破季線可減",
+                    f"{sell_note}\n現價 {eth['price']:,.2f} < 50MA {eth['ma50']:,.2f}"
+                    f"（乖離 {bias50:+.1f}%）。不加碼；反彈再評估減碼／換 USDT。",
+                )
+            )
         if eth["change_pct"] <= btc_shock:
             msg = f"ETH 急跌 {eth['change_pct']:+.2f}%（閾值 {btc_shock}%）。"
             actions.append(("ETH", "asset_shock", "emergency", "ETH 急跌警戒", msg))
@@ -577,15 +613,16 @@ def main():
     lines.append("## 推播摘要\n\n")
     if actions:
         for _, _, urg, title, msg in actions:
-            tag = (
-                "緊急"
-                if urg == "emergency"
-                else (
-                    "較推薦"
-                    if "較推薦" in title
-                    else ("請買進" if "請買進" in title or "請囤匯" in title else "通知")
-                )
-            )
+            if urg == "emergency":
+                tag = "緊急"
+            elif "強烈" in title:
+                tag = "強烈建議"
+            elif "建議" in title or "請加碼" in title:
+                tag = "建議"
+            elif "允許" in title or "請買進" in title or "請囤匯" in title:
+                tag = "允許"
+            else:
+                tag = "通知"
             lines.append(f"* [{tag}] **{title}**\n")
     else:
         lines.append("* 無推播項目。\n")

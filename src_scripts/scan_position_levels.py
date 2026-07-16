@@ -320,15 +320,8 @@ def main():
                         "若要避險／囤匯，改在台銀等直接買美金（對照匯率年均線，見多資產報表）"
                     )
                 continue
-            entry = row.get("entry")
-            stop = row.get("stop") or row.get("low_5d")
-            profit = row.get("profit")
-            if entry is not None and near(close, entry, tol):
-                actions.append(
-                    f"建倉提醒：{code} {name} 回測 5MA {entry:.2f}（現價 {close:.2f}）｜"
-                    f"進場帶≈{entry:.2f}；停損參考 {_fmt_opt(stop)}；"
-                    f"停利參考 {_fmt_opt(profit)}（EOD 確認後再下單）"
-                )
+            # 買點一律走 scan_watch_grades（grade_buy_policy 門檻）；
+            # 此處不再推「回測 5MA 建倉」，避免繞過評等／階梯政策。
 
         elif status == "macro" and code == "TAIEX":
             above = row.get("above_200ma")
