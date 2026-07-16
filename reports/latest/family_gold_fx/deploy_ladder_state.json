@@ -1,7 +1,26 @@
 {
   "version": 1,
   "profile": "family_gold_fx",
-  "updated_at": null,
+  "updated_at": "2026-07-16T20:01:00",
   "note": "家人帳：僅手動對帳後更新。推播≠已買。",
-  "products": {}
+  "products": {
+    "GOLD": {
+      "invested_twd": 120000,
+      "max_grade_filled": "B",
+      "cycle_id": "20260716_family_gold_b",
+      "last_action": "enter",
+      "last_amount": 120000,
+      "updated_at": "2026-07-16T20:01:00",
+      "note": "使用者匯報：買 28.6g（金額暫記12萬）"
+    },
+    "USDTWD": {
+      "invested_twd": 0,
+      "max_grade_filled": null,
+      "cycle_id": null,
+      "last_action": "trim",
+      "last_amount": 99851,
+      "updated_at": "2026-07-16T20:01:00",
+      "note": "使用者匯報：結售 3,100 USD（匯率暫記32.21）"
+    }
+  }
 }

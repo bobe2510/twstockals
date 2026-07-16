@@ -5,14 +5,14 @@
   "watchlist": [],
   "approved_universe": {
     "mode": "gold_fx_only",
-    "deployable_twd": 1000000,
+    "deployable_twd": 979851,
     "buy_allowed": [
       {
         "id": "BOT_GOLD",
         "venue": "BOT",
         "risk": "low_med",
         "sleeve": "hedge",
-        "why": "≥B 允許買進；可動用100萬下每筆約12萬、黃金新投入上限約30萬"
+        "why": "≥B 允許買進；可動用約98萬下每筆約12萬、黃金新投入上限約30萬（已用約12萬）"
       },
       {
         "id": "BOT_USD",
@@ -29,26 +29,40 @@
     "gold_passbook": {
       "bank": "BOT",
       "unit": "g",
-      "qty": 50,
+      "qty": 78.6,
       "pricing": "TWD",
-      "cost_per_g": null,
-      "approx_twd": null,
-      "note": "家人帳既有 50 公克；budget 見 family 政策（新投入上限約30萬）"
+      "cost_per_g": 4195.8,
+      "approx_twd": 329790,
+      "last_buy": {
+        "date": "2026-07-16",
+        "qty_g": 28.6,
+        "twd": 120000,
+        "price_per_g": 4195.8,
+        "note": "評等B允許買進一袖；金額暫依建議12萬記帳（若實際不同請更正）"
+      },
+      "note": "家人帳合計 78.6 公克（既有50＋2026-07-16買28.6）。budget 新投入上限約30萬，已用約12萬。"
     },
     "forex_usd": {
       "bank": "BOT",
-      "qty": 15725.51,
-      "approx_twd": 506500,
+      "qty": 12625.51,
+      "approx_twd": 406668,
       "cost_twd": null,
       "as_of": "2026-07-16",
-      "note": "家人帳台銀美金 15,725.51（開戶時對帳）"
+      "last_sell": {
+        "date": "2026-07-16",
+        "qty_usd": 3100,
+        "rate": 32.21,
+        "twd_proceeds": 99851,
+        "note": "乖離年線偏強減碼一袖；匯率暫記32.21（若實際不同請更正）"
+      },
+      "note": "家人帳台銀美金 12,625.51（2026-07-16 結售 3,100＠32.21→約99,851）"
     },
     "crypto": [],
     "crypto_ledger": {},
     "us_etf": [],
     "total_cash_twd": null,
-    "deployable_cash_twd": 1000000,
-    "cash_note": "可再投入現金 100 萬（既有黃金／美金市值外）。只部署黃金＋美金。",
+    "deployable_cash_twd": 979851,
+    "cash_note": "可再投入約 97.99 萬（2026-07-16：買金−12萬、美金結售＋99,851）。只部署黃金＋美金。",
     "pause_us_ib": true
   },
   "allocation_targets": {

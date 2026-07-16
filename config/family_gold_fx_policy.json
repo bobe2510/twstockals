@@ -3,7 +3,7 @@
   "profile": "family_gold_fx",
   "source": "scaled from main grade_buy_policy for deployable 100萬｜gold+USD only",
   "note": "家人帳專用。可動用100萬；黃金每筆約12萬／預算30萬；美金買點袖口5萬、減碼袖口10萬。推播≠已買；成交後手動對帳 deploy_ladder。",
-  "deployable_cash_twd": 1000000,
+  "deployable_cash_twd": 979851,
   "cash_pools": {
     "note": "本帳只有黃金（常態）與美金（機會）。",
     "opportunity_share": 0.25,
