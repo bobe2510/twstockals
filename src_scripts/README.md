@@ -1,125 +1,53 @@
-# 🛠️ 活躍執行腳本說明與維運指南
+# 活躍執行腳本（持倉監控優先）
 
-本目錄存放專案的所有活躍 Python 執行腳本。策略已轉向：**持倉監控＋見機停損停利**，主力倉以 **CP（高報酬 × 低上班操作）** 選優。
+日常只認：**`config/my_targets.json`**（持股真相）＋雲端推播鏈。  
+台股全市場選股／社群股／OCR／舊持股深報已移到 `legacy/`。
 
----
+## 日常入口
 
-## 📋 活躍腳本清單與使用說明
-
-### 1. 🚀 一鍵聯動主核心：`market_screener.py`
-*   **功能**：下載全市場快取、產出選股溫度計報告，並聯動持股診斷。
-*   **定位變更**：排行榜當作**環境溫度計**，**不當新開個股倉的下單清單**。
-*   **執行指令**：
-    ```bash
-    python src_scripts/market_screener.py
-    ```
-
----
-
-### 2. 📊 個人持倉處置診斷：`analyze_portfolio_deep.py`
-*   **功能**：讀取 `config/my_targets.json`，產出停損／停利、錯誤策略出清、多資產配置差距、`levels.json`，並嵌入 CP 結論。
-*   **執行指令**：
-    ```bash
-    python src_scripts/analyze_portfolio_deep.py
-    ```
-
----
-
-### 3. 🚨 盤中緊急防禦：`scan_black_swan.py`
-*   **功能**：盤中推 **大盤／匯率／反1出清類**；**個股破防守不盤中推**（避免阿呆谷）。
-*   **收盤確認**：`--close-confirm`（約 13:10）才推個股破防守；請再對 13:30 收盤執行。
-*   排程建議：09:05 macro｜13:10 close_confirm｜14:15 eod。
-*   手動：
-    ```bash
-    python src_scripts/scan_black_swan.py --force --no-popup
-    python src_scripts/scan_black_swan.py --force --close-confirm --no-popup
-    ```
-*   **參數**：
-    *   `--force`：略過時段限制
-    *   `--no-popup`：不彈 Windows 視窗（排程建議）
-    *   `--asset-window`：晚間多資產視窗（20:00~05:00）
-*   **執行指令**：
-    ```bash
-    python src_scripts/scan_black_swan.py --force --no-popup
-    python src_scripts/scan_black_swan.py --force --asset-window --no-popup
-    ```
-
----
-
-### 4. 📋 收盤後執行清單：`scan_position_levels.py`
-*   **功能**：讀取 `reports/latest/levels.json`，確認停損／停利／建倉／年線狀態，產出 `eod_action_list.md` 並推播一則摘要（建議 14:10 排程）。
-*   **執行指令**：
-    ```bash
-    python src_scripts/scan_position_levels.py --force
-    ```
-
----
-
-### 5. 🏅 CP 回測選優：`run_etf_backtest.py`
-*   **功能**：比較 0050／正2／年線／季線／混合策略，計算
-    `CP = CAGR - 0.25*|MDD| - 1.5*WorkdayOpsPerYear`，輸出：
-    *   `reports/latest/etf_backtest_report.md`
-    *   `reports/latest/strategy_cp_ranking.md`
-    *   `reports/latest/strategy_cp_best.json`
-*   **執行指令**：
-    ```bash
-    python src_scripts/run_etf_backtest.py
-    ```
-
----
-
-## 6. 📣 通知模組：`notify.py` + 雲端排程
-*   Telegram + Email；支援 `config/api_keys.json` 或環境變數（GitHub Secrets）。
-*   統一入口：`python src_scripts/run_all_alerts.py --mode all|intraday|close_confirm|eod|multi --force`
-*   **免費雲端**：GitHub Actions（見 [`docs/CLOUD_ALERTS.md`](../docs/CLOUD_ALERTS.md)），不必自架 Heroku／家用主機常開。
-*   多資產：`scan_multi_asset.py`（黃金評等金額、匯率、BTC、VOO/QQQ 觀測）
-*   測試：
-    ```bash
-    python src_scripts/notify.py
-    python src_scripts/run_all_alerts.py --mode multi --force --force-notify
-    ```
-
----
-
-### 📥 7. 個股手動更新：`fetch_stock_data.py`
 ```bash
-python src_scripts/fetch_stock_data.py 2330
+python src_scripts/run_all_alerts.py --mode preopen|intraday|close_confirm|eod|multi_day|multi|crypto_noon --force
+python src_scripts/sync_runtime_state.py          # 對齊 holdings／CURRENT_STATE、清過期 pending
+python src_scripts/refresh_levels_live.py         # 輕量刷新現價／均線／停損參考
 ```
 
----
+詳見 [`docs/CLOUD_ALERTS.md`](../docs/CLOUD_ALERTS.md)。
 
-## ⚙️ 設定檔
+## 主線腳本
+
+| 腳本 | 用途 |
+|------|------|
+| `run_all_alerts.py` | 雲端／本機統一入口 |
+| `sync_runtime_state.py` | 持股 scrub、CURRENT_STATE |
+| `refresh_levels_live.py` | 現價 levels |
+| `scan_black_swan.py` | 盤中大盤／匯率；13:10 破防守 |
+| `scan_exit_watch.py` | 13:10 出清倉（美債 gradual_exit、個股殘倉） |
+| `scan_position_levels.py` | 14:15 EOD 停損停利 |
+| `scan_watch_grades.py` | 觀測評等請買進 |
+| `scan_multi_asset.py` | 黃金／外匯／BTC／ETH／美股觀測 |
+| `scan_crypto_noon.py` | 12:00 加密 |
+| `scan_preopen_reminder.py` | 08:30 0050／正2 待辦 |
+| `notify.py` / `grade_buy_policy.py` / `holding_rules.py` / `trade_levels.py` / `market_data.py` / `tw_time.py` / `eod_pending_ops.py` | 共用庫 |
+| `fetch_stock_data.py` | 手動補單一標的 K 線 |
+| `run_etf_backtest.py` / `run_grade_*_backtest.py` | 少跑：校準 CP／買點門檻 |
+
+## 出清倉仍會抓
+
+`my_targets.portfolio` 裡帶 `policy: gradual_exit`（如 **00687B**）與個股殘倉（**2301**／**3484**）會進：
+
+- `refresh_levels_live`（現價）
+- `scan_exit_watch`（13:10）
+- `scan_position_levels`（14:15 EOD）
+
+## 設定
 
 | 檔案 | 用途 |
 |------|------|
-| `config/my_targets.json` | 持股、觀測、`multi_asset`、`allocation_targets`、`force_exit_codes` |
-| `config/alert_rules.json` | 觸價規則、閾值、冷卻時間 |
-| `config/api_keys.json` | FinMind／Gemini／Telegram／SMTP（勿提交公開） |
+| `config/my_targets.json` | **唯一手改**持股／已出清／現金／pause_us_ib |
+| `config/alert_rules.json` | 閾值／冷卻 |
+| `config/grade_buy_policy.json` | 買點門檻與金額 |
+| `config/archive/` | 已封存（如 social_picks） |
 
-### 補數量範例（黃金／外匯／加密）
-在 `my_targets.json` 的 `multi_asset` 填入：
-```json
-"gold_passbook": { "unit": "g", "qty": 10, "cost_per_g": 2500 },
-"forex_usd": { "qty": 1000, "cost_twd": 31000 },
-"crypto": [{ "symbol": "BTC-USD", "qty": 0.01, "cost_usd": 600 }]
-```
+## legacy/
 
----
-
-## 🗓️ 建議排程
-
-| 時間 | 指令 |
-|------|------|
-| 約 09:05 | `intraday`（大盤／匯率；不推個股破防守） |
-| 約 13:10 | `close_confirm`（近收盤確認破防守） |
-| 約 14:15 | `eod` |
-| 約 20:00 | `multi` |
-| 約 14:10 | `scan_position_levels.py`（主推播） |
-| 晚間 | `scan_black_swan.py --asset-window --no-popup` |
-| 盤後／週末 | `market_screener.py` 或 `analyze_portfolio_deep.py`；必要時 `run_etf_backtest.py` |
-
----
-
-## 📁 歷史備份
-
-最新報告在 `reports/latest/`，歷史副本在 `reports/history/`。
+`src_scripts/legacy/`：選股器、社群評分、OCR、舊 `analyze_portfolio_deep` 等。需要時可手動跑，**不進 GitHub Actions**。

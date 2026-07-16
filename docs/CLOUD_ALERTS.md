@@ -86,7 +86,11 @@ GitHub `cron` 用 **UTC**；程式內時間窗／推播時間戳一律用 `Asia/
 
 Alert／階梯進度：`reports/alert_state.json`、`deploy_ladder_state.json`、`eod_pending_ops.json`、`close_confirm_ran.json` 以 Actions cache 盡量保留。
 
-**防過期**：每次 `close_confirm`／`eod` 會先跑 `sync_runtime_state.py`，以 `my_targets.json`  scrub `levels`／`holdings`、清空矛盾 pending，並寫入 `reports/latest/CURRENT_STATE.md`。決策以該檔與當日 EOD 為準；舊的 `portfolio_and_watchlist.md`（仍列反1 等）視為過期。
+**防過期**：每次 `close_confirm`／`eod` 會先跑 `sync_runtime_state.py`，以 `my_targets.json` scrub `levels`／`holdings`、清空矛盾 pending，並寫入 `reports/latest/CURRENT_STATE.md`。決策以該檔與當日 EOD 為準。
+
+**出清倉持續監控**：`my_targets.portfolio` 中的 `gradual_exit`（如 00687B）與個股殘倉會在 13:10 `scan_exit_watch`、14:15 `scan_position_levels` 繼續抓價與推播；選股腳本移入 `legacy/` **不影響**這條鏈。
+
+選股／舊持股深報已封存於 `src_scripts/legacy/`、`reports/archive/`。
 
 ## 限制（免費方案誠實說明）
 

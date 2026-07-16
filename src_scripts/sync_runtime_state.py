@@ -205,7 +205,7 @@ def stamp_stale_portfolio_report(targets: dict, now) -> None:
         f"> 現行持股只認：`{'`、`'.join(sorted(live))}`。  \n"
         f"> **已出清勿再操作**：`{'`、`'.join(sorted(cleared))}`。  \n"
         f"> 請改看 [`CURRENT_STATE.md`](CURRENT_STATE.md) 與當日 `eod_action_list.md`。  \n"
-        f"> 完整日報請重跑 `market_screener`／`analyze_portfolio_deep` 後才可信。  \n\n"
+        f"> 完整日報已封存；日常請看 CURRENT_STATE／EOD／推播。  \n\n"
     )
     # 去掉舊 stamp 再蓋
     text = re.sub(

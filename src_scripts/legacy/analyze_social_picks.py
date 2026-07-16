@@ -7,11 +7,13 @@ WORKSPACE = r"g:\我的雲端硬碟\dev\twstockals"
 REPORT_PATH = os.path.join(WORKSPACE, "reports", "latest", "social_picks_screener.md")
 
 def generate_social_report(results, today_str):
-    social_picks_path = os.path.join(WORKSPACE, "config", "social_picks.json")
+    social_picks_path = os.path.join(WORKSPACE, "config", "archive", "social_picks.json")
     if not os.path.exists(social_picks_path):
-        print("找不到社群標的設定檔 config/social_picks.json，略過生成。")
+        social_picks_path = os.path.join(WORKSPACE, "config", "social_picks.json")
+    if not os.path.exists(social_picks_path):
+        print("找不到社群標的設定檔 config/archive/social_picks.json，略過生成。")
         return
-        
+
     with open(social_picks_path, 'r', encoding='utf-8') as f:
         social_data = json.load(f)
         

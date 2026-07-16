@@ -76,52 +76,42 @@ def fetch_with_rotation(rotator, func_name, *args, **kwargs):
             raise e
 
 def get_target_stocks():
-    """從 my_targets.json 和 social_picks.json 讀取所有需下載的個股清單"""
+    """從 my_targets.json 讀取持股與觀測清單（社群選股已封存，不再自動下載）。"""
     stocks = []
     seen = set()
-    
-    # 1. 載入個人持股與觀察股
+
     targets_path = os.path.join(WORKSPACE, "config", "my_targets.json")
     if os.path.exists(targets_path):
         try:
-            with open(targets_path, 'r', encoding='utf-8') as f:
+            with open(targets_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             for item in data.get("portfolio", []):
                 code = item["code"]
                 if code not in seen:
                     seen.add(code)
-                    stocks.append({"code": code, "name": item.get("name", ""), "market": "TSE"})
+                    stocks.append(
+                        {"code": code, "name": item.get("name", ""), "market": "TSE"}
+                    )
             for item in data.get("watchlist", []):
                 code = item["code"]
                 if code not in seen:
                     seen.add(code)
-                    stocks.append({"code": code, "name": item.get("name", ""), "market": "TSE"})
+                    mkt = item.get("market") or "TSE"
+                    stocks.append(
+                        {"code": code, "name": item.get("name", ""), "market": mkt}
+                    )
         except Exception as e:
             print("讀取 my_targets.json 失敗:", e)
-            
-    # 2. 載入社群追蹤股
-    social_picks_path = os.path.join(WORKSPACE, "config", "social_picks.json")
-    if os.path.exists(social_picks_path):
-        try:
-            with open(social_picks_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            for item in data.get("tracked_stocks", []):
-                code = item["code"]
-                if code not in seen:
-                    seen.add(code)
-                    stocks.append({"code": code, "name": item.get("name", ""), "market": item.get("market", "TSE")})
-        except Exception as e:
-            print("讀取 social_picks.json 失敗:", e)
-            
+
     return stocks
+
 
 def main():
     # 1. 取得需要下載的個股列表
     stocks = get_target_stocks()
     if not stocks:
-        print("沒有設定任何追蹤或社群個股。")
+        print("沒有設定任何持股或觀測股（config/my_targets.json）。")
         return
-        
     # 2. 判定日期：支援傳參，如 python fetch_stock_data.py 20260703
     if len(sys.argv) > 1 and len(sys.argv[1]) == 8 and sys.argv[1].isdigit():
         today_str = sys.argv[1]

@@ -568,7 +568,9 @@ def run_screener(dates, profiles, write_reports=True):
             print("載入 targets 配置失敗:", e)
             
     # 新增載入社群收集標的至免過濾名單，確保它們被篩選器完整計算
-    social_picks_path = os.path.join(WORKSPACE, "config", "social_picks.json")
+    social_picks_path = os.path.join(WORKSPACE, "config", "archive", "social_picks.json")
+    if not os.path.exists(social_picks_path):
+        social_picks_path = os.path.join(WORKSPACE, "config", "social_picks.json")
     if os.path.exists(social_picks_path):
         try:
             with open(social_picks_path, 'r', encoding='utf-8') as f:

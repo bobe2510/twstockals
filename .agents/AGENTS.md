@@ -126,36 +126,28 @@ To maintain stability, reliability, and correctness in this workspace's automati
 
 ## 6. Unified Project Structure & Workflow (專案目錄結構與聯動工作流規範)
 
-To maintain absolute project tidiness and avoid redundant API requests, future agents must adhere to this structured directory hierarchy and run logic:
-
 ### A. Directory Map (目錄配置原則)
-*   **`src_scripts/`**: All active Python execution scripts. Under no circumstances should raw scripts exist in the root folder.
-*   **`src_scripts/legacy/`**: Place old tests, backup versions, or unused scripts here to avoid project clutter.
-*   **`config/`**: Contains static/dynamic user settings.
-    *   `config/my_targets.json`: Holds current active `portfolio` cost/shares and `watchlist` observe lists.
-    *   `config/social_picks.json`: Social community stock monitoring list.
-*   **`market_crawled_cache/`**: Cache directory for TWSE/TPEx daily JSON data. Decouples all scripts from duplicate web scraping.
-*   **`reports/latest/`**: Target directory for the most up-to-date analysis outputs.
-    *   `reports/latest/portfolio_and_watchlist.md`: Personal portfolio health and watchlist buy entries.
-    *   `reports/latest/market_screener_low_risk.md`: Market-wide low-risk rankings (restricted to top 20% sector momentum).
-    *   `reports/latest/market_screener_momentum.md`: Market-wide momentum rankings (restricted to top 20% sector momentum).
-    *   `reports/latest/black_swan_defense.md`: Real-time macroeconomic warning and panic news alerts.
-*   **`reports/history/`**: Contains daily backups of the above reports named with suffix `_{date}.md` for archive tracking.
+*   **`src_scripts/`**: 活躍腳本（雲端推播鏈）。根目錄禁止放裸腳本。
+*   **`src_scripts/legacy/`**: 選股器、社群股、OCR、舊持股深報等（不進日常排程）。
+*   **`config/`**:
+    *   `config/my_targets.json`: **唯一手改真相**（portfolio／cleared／multi_asset／cash）。
+    *   `config/alert_rules.json`、`config/grade_buy_policy.json`
+    *   `config/archive/`: 已封存設定（如 social_picks）
+*   **`reports/latest/`**: 執行產物 — 優先看 `CURRENT_STATE.md`、`eod_action_list.md`、`levels.json`、`exit_watch_1310.md`
+*   **`reports/archive/`**: 過期選股／舊持股報告
+*   **`reports/history/`**: 時間戳備份
 
-### B. Execution Workflow (聯動執行機制)
-*   **Unified Report Workflow (一鍵三報聯動)**:
-    *   Do **NOT** write scripts that fetch individual stock CSVs for portfolio analysis.
-    *   Execute `python src_scripts/market_screener.py` to trigger the master download loop. This script downloads the market cache once, filters for top 20% sectors, writes both `market_screener_low_risk.md` and `market_screener_momentum.md`, and then immediately calls `analyze_portfolio_deep.generate_integrated_report(results, date)` in-memory.
-    *   This single command updates **all 3 main reports** instantly with zero duplicate file parsing or API waste.
-*   **Manual Stock Download (手動個股更新彈性)**:
-    *   If a specific stock's historical K-line or deep index needs updating, run `python src_scripts/fetch_stock_data.py <symbol>` to fetch individual data.
-*   **Real-time Defense (即時黑天鵝防禦)**:
-    *   Execute `python src_scripts/scan_black_swan.py` to fetch current TAIEX, exchange rates, and headlines, writing warnings to `reports/latest/black_swan_defense.md`.
+### B. Execution Workflow (日常聯動)
+*   **雲端／本機統一入口**: `python src_scripts/run_all_alerts.py --mode …`
+    *   `close_confirm`／`eod` 會先跑 `sync_runtime_state` + `refresh_levels_live`
+*   **對齊狀態**: `python src_scripts/sync_runtime_state.py`
+*   **出清倉監控**（持續）: `scan_exit_watch`（13:10）+ `scan_position_levels`（14:15）讀 `my_targets` 的 `gradual_exit`／個股殘倉
+*   **手動補價**: `python src_scripts/fetch_stock_data.py <symbol>`
+*   **黑天鵝**: `python src_scripts/scan_black_swan.py`（或經 run_all_alerts）
 
-### C. Report Layout & Formatting Rules (報告排版與資料呈現規範)
-*   **Total holdings table complete values (總覽表數值完整呈現)**:
-    *   In the `📋 實體持股與帳務總覽表` inside `portfolio_and_watchlist.md`, must calculate and display the actual `🛡️ 停損守備價` (5-day low) and `📈 動態停利點 (5MA)` for **all positions**, including both individual stocks and ETF assets (like leveraged/inverse ETFs and bond ETFs).
-    *   Do **NOT** use empty dashes `**-**` or `N/A` for ETF rows. All trailing stop-loss and profit parameters must be populated using their respective K-line history to maintain consistent real-time visibility during active trading hours.
+### C. Report Rules
+*   勿手改 `holdings.json`／`levels.json`／`CURRENT_STATE.md`
+*   勿依 `reports/archive/` 或過期 `portfolio_and_watchlist` 下單
 
 ---
 
@@ -179,8 +171,8 @@ To avoid non-essential drawdowns during high-volatility regimes and prevent pani
 ## 8. Holdings-First Strategy & CP Selection (持倉監控優先與 CP 選優)
 
 ### A. Strategy Shift (策略轉向)
-*   **Default**: Do **not** open new single-stock positions from market screener rankings. Treat `market_screener` as a **macro temperature gauge**, not an order ticket.
-*   Allowed actions only: EOD entry confirmation, add-on at 10MA (non `force_exit`), trailing take-profit, hard stop at 5-day low, and priority liquidation of error strategies (`force_exit` / `00632R` / `00882`).
+*   **Default**: Do **not** open new single-stock positions. Screener／社群選股已移 `src_scripts/legacy/`，不當下單來源。
+*   Allowed actions only: EOD entry confirmation, add-on at 10MA (non `force_exit`), trailing take-profit, hard stop at 5-day low, and priority liquidation of error strategies / `gradual_exit`（如 00687B）.
 *   Individual stocks are **residual / exit-only** satellites; do not expand the stock pool.
 
 ### B. CP Ranking Rule (最高報酬 × 最少上班操作)
@@ -202,8 +194,10 @@ To avoid non-essential drawdowns during high-volatility regimes and prevent pani
 *   Notifications: `config/api_keys.json` fields `TELEGRAM_*`, `SMTP_*`, `NOTIFY_DRY_RUN`. Use `src_scripts/notify.py`.
 
 ### E. Key Artifacts
-*   `reports/latest/levels.json` — stop/profit/entry/add levels for scanners
-*   `reports/latest/strategy_cp_ranking.md` + `strategy_cp_best.json` — CP ranking
-*   `reports/latest/eod_action_list.md` — after-close action digest
+*   `config/my_targets.json` — **source of truth**
+*   `reports/latest/CURRENT_STATE.md` — synced digest（決策優先）
+*   `reports/latest/levels.json` / `holdings.json` — generated; `sync_runtime_state` + `refresh_levels_live`
+*   `reports/latest/eod_action_list.md` / `exit_watch_1310.md` — EOD／出清倉
+*   `reports/latest/strategy_cp_ranking.md` + `strategy_cp_best.json` — CP（少跑回測產出）
 
 

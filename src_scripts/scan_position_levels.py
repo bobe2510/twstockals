@@ -75,41 +75,6 @@ def load_targets_meta():
     return portfolio, cleared, costs, rejected, policies
 
 
-def save_holdings_snapshot(costs: dict, policies: dict) -> None:
-    """寫入 reports/latest/holdings.json，方便對帳當前持股與成本。"""
-    path = os.path.join(WORKSPACE, "config", "my_targets.json")
-    if not os.path.exists(path):
-        return
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    rows = []
-    for h in data.get("portfolio") or []:
-        rows.append(
-            {
-                "code": h.get("code"),
-                "name": h.get("name"),
-                "shares": h.get("shares"),
-                "cost": h.get("cost"),
-                "policy": h.get("policy"),
-                "note": h.get("note"),
-            }
-        )
-    out = {
-        "as_of": taiwan_now().isoformat(timespec="seconds"),
-        "portfolio": rows,
-        "cleared_positions": data.get("cleared_positions") or [],
-        "multi_asset_summary": {
-            "gold_g": (data.get("multi_asset") or {}).get("gold_passbook", {}).get("qty"),
-            "usd": (data.get("multi_asset") or {}).get("forex_usd", {}).get("qty"),
-            "pause_us_ib": (data.get("multi_asset") or {}).get("pause_us_ib"),
-        },
-    }
-    snap = os.path.join(WORKSPACE, "reports", "latest", "holdings.json")
-    os.makedirs(os.path.dirname(snap), exist_ok=True)
-    with open(snap, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, indent=2)
-
-
 def effective_roi(row, costs: dict) -> float | None:
     """優先 levels.roi_pct；否則用 cost（levels 或 my_targets）與收盤價估算。"""
     if row.get("roi_pct") is not None:
@@ -162,13 +127,16 @@ def main():
 
     levels_doc = load_levels()
     if not levels_doc:
-        print(f"找不到 {LEVELS_PATH}，請先跑 analyze_portfolio_deep / market_screener。")
+        print(
+            f"找不到 {LEVELS_PATH}，請先跑 "
+            f"`python src_scripts/refresh_levels_live.py` 或 "
+            f"`python src_scripts/sync_runtime_state.py`。"
+        )
         sys.exit(1)
 
     live_portfolio, cleared_codes, portfolio_costs, rejected_codes, policies = (
         load_targets_meta()
     )
-    save_holdings_snapshot(portfolio_costs, policies)
     rules = load_alert_rules()
     tol = float(rules.get("ma_touch_tolerance_pct", 0.8))
     bounce = float(rules.get("exit_priority_bounce_pct", 3.0))
