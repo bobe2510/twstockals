@@ -73,6 +73,50 @@ def gold_budget_and_room(multi: dict, bot_px: float, policy: dict) -> tuple[int,
     return budget, room, held
 
 
+def suggest_usd_trim(
+    usdtwd: dict,
+    multi: dict,
+    policy: dict,
+    bias200: float | None,
+) -> dict:
+    """
+    美金偏強時的建議減碼（台幣／美金）。
+    對齊買點袖口金額；上限為持倉比例，避免誤作出清核心外匯。
+    """
+    pol = product_policy("USDTWD", policy)
+    fx = float(usdtwd.get("price") or 0)
+    held = multi.get("forex_usd") or {}
+    try:
+        held_usd = float(held.get("qty") or 0)
+    except (TypeError, ValueError):
+        held_usd = 0.0
+    held_twd = held_usd * fx if fx > 0 else 0.0
+    if held.get("approx_twd"):
+        try:
+            held_twd = float(held["approx_twd"])
+        except (TypeError, ValueError):
+            pass
+
+    base = int(pol.get("suggest_sell_twd") or pol.get("suggest_twd", {}).get("A") or 100_000)
+    strong_amt = int(pol.get("suggest_sell_twd_strong") or base * 2)
+    strong_bias = float(pol.get("sell_bias_strong") or 3.0)
+    max_pct = float(pol.get("sell_max_pct_of_held") or 0.20)
+
+    target = strong_amt if (bias200 is not None and bias200 >= strong_bias) else base
+    cap = int(held_twd * max_pct) if held_twd > 0 else target
+    sell_twd = max(0, min(target, cap)) if held_twd > 0 else target
+    sell_usd = (sell_twd / fx) if fx > 0 and sell_twd > 0 else 0.0
+    return {
+        "sell_twd": int(sell_twd),
+        "sell_usd": float(sell_usd),
+        "held_usd": held_usd,
+        "held_twd": float(held_twd),
+        "fx": fx,
+        "strong": bool(bias200 is not None and bias200 >= strong_bias),
+        "max_pct": max_pct,
+    }
+
+
 def grade_usd_fx(usdtwd: dict) -> dict:
     """對齊回測 grade_usd_i：囤匯評等。"""
     px = usdtwd["price"]
@@ -460,23 +504,53 @@ def main():
             lines.append("* **狀態**：建議級（flat：升級不加碼）。  \n")
         elif bias200 is not None and bias200 >= 1.5:
             sell_note = product_policy("USDTWD", policy).get("sell_note") or (
-                "美元偏強，暫不囤匯"
+                "美元偏強，暫不囤匯／建議減碼一袖"
             )
+            trim = suggest_usd_trim(usdtwd, multi, policy, bias200)
+            sell_twd = int(trim["sell_twd"])
+            sell_usd = float(trim["sell_usd"])
+            wan = sell_twd // 10000
             lines.append(f"* **狀態**：{sell_note}  \n")
+            if sell_twd > 0 and trim["held_usd"] > 0:
+                lines.append(
+                    f"* **建議減碼**：約 **{sell_usd:,.0f}** 美金"
+                    f"（約 **{sell_twd:,}** 元／{wan}萬台幣）"
+                    f"{'｜偏強加深（≥3%）兩袖' if trim['strong'] else '｜一袖＝買點同級'}"
+                    f"；持倉約 {trim['held_usd']:,.0f} 美金，單次上限 "
+                    f"{int(trim['max_pct']*100)}%  \n"
+                )
+            elif sell_twd > 0:
+                lines.append(
+                    f"* **建議減碼**：約 **{sell_twd:,}** 元台幣（持倉數量待填）  \n"
+                )
             if int(applied.get("invested_twd") or 0) > 0:
                 ladder_state = reset_ladder_cycle("USDTWD", state=ladder_state)
             force_notify = "--force-notify" in sys.argv
             if not force_notify and already_sent("USDTWD", "fx_sell_zone"):
                 lines.append("* **推播**：略過（24h 內已推美金偏強提醒）  \n")
             else:
-                actions.append(
-                    (
-                        "USDTWD",
-                        "fx_sell_zone",
-                        "eod_action",
-                        "美金偏強｜暫不囤匯",
-                        f"{sell_note}\nUSD/TWD {fx:.4f}｜乖離年線 {bias200:+.1f}%。",
+                title = (
+                    f"美金偏強｜建議減碼約{sell_usd:,.0f}美金（{wan}萬）"
+                    if sell_usd > 0
+                    else "美金偏強｜暫不囤匯"
+                )
+                msg = (
+                    f"{sell_note}\n"
+                    f"USD/TWD {fx:.4f}｜乖離年線 {bias200:+.1f}%"
+                    f"{'（偏強加深）' if trim['strong'] else ''}。\n"
+                )
+                if sell_usd > 0 and trim["held_usd"] > 0:
+                    msg += (
+                        f"**建議減碼約 {sell_usd:,.0f} 美金**"
+                        f"（約 {sell_twd:,} 元台幣），台銀結匯。\n"
+                        f"持倉約 {trim['held_usd']:,.0f} 美金；"
+                        f"單次上限持倉 {int(trim['max_pct']*100)}%，非出清核心。\n"
+                        f"執行：暫不囤匯；有閒錢優先黃金／現金，勿追美元。"
                     )
+                else:
+                    msg += "暫不囤匯；持倉數量待填，減碼金額以政策袖口為準。"
+                actions.append(
+                    ("USDTWD", "fx_sell_zone", "eod_action", title, msg)
                 )
         else:
             lines.append("* **狀態**：未達推播門檻／同階已推，觀望。  \n")

@@ -49,7 +49,12 @@
         "S": 100000
       },
       "sell_rule": "fx_strong_bias",
-      "sell_note": "乖離年線 ≥+1.5% → 暫不囤匯／可減",
+      "sell_note": "乖離年線 ≥+1.5% → 暫不囤匯／建議減碼一袖",
+      "suggest_sell_twd": 100000,
+      "suggest_sell_twd_strong": 200000,
+      "sell_bias_strong": 3.0,
+      "sell_max_pct_of_held": 0.20,
+      "sell_note_detail": "減碼對齊買點袖口（A/S 各約10萬）；非出清核心美金。乖離≥3%可建議兩袖。",
       "push_windows": [
         "multi_day",
         "multi"
