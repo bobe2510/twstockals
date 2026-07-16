@@ -86,6 +86,8 @@ GitHub `cron` 用 **UTC**；程式內時間窗／推播時間戳一律用 `Asia/
 
 Alert／階梯進度：`reports/alert_state.json`、`deploy_ladder_state.json`、`eod_pending_ops.json`、`close_confirm_ran.json` 以 Actions cache 盡量保留。
 
+**防過期**：每次 `close_confirm`／`eod` 會先跑 `sync_runtime_state.py`，以 `my_targets.json`  scrub `levels`／`holdings`、清空矛盾 pending，並寫入 `reports/latest/CURRENT_STATE.md`。決策以該檔與當日 EOD 為準；舊的 `portfolio_and_watchlist.md`（仍列反1 等）視為過期。
+
 ## 限制（免費方案誠實說明）
 
 - GitHub Actions 免費額度對私人 repo 有月分鐘上限（一般個人夠用）

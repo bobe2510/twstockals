@@ -1,8 +1,8 @@
 {
   "as_of": null,
-  "as_of_ts": "2026-07-16T09:18:18",
+  "as_of_ts": "2026-07-16T09:29:40",
   "items": [],
   "reminded_at": null,
   "reminded_for_as_of": null,
-  "cleared_reason": "manual_clear"
+  "cleared_reason": "sync_runtime_state_stale_or_flag"
 }

@@ -1,0 +1,86 @@
+{
+  "as_of": "2026-07-16T09:29:40+08:00",
+  "portfolio": [
+    {
+      "code": "00631L",
+      "name": "元大台灣50正2",
+      "shares": 9000,
+      "cost": 37.13,
+      "policy": null,
+      "note": null
+    },
+    {
+      "code": "00687B",
+      "name": "國泰20年美債",
+      "shares": 4000,
+      "cost": 33.2,
+      "policy": "gradual_exit",
+      "note": "長天期美債波動大；長期逢彈分批出清，資金轉現金／台銀美金／黃金。不加碼。"
+    },
+    {
+      "code": "2301",
+      "name": "光寶科",
+      "shares": 1000,
+      "cost": 217.67,
+      "policy": null,
+      "note": "剩1張(1000股)。2026-07-14盤中賣出2張（收盤未破防守，賣在阿呆谷）"
+    },
+    {
+      "code": "3484",
+      "name": "崧騰",
+      "shares": 5000,
+      "cost": 51.82,
+      "policy": null,
+      "note": null
+    }
+  ],
+  "cleared_positions": [
+    {
+      "code": "00632R",
+      "name": "元大台灣50反1",
+      "cleared_on": "2026-07-14",
+      "note": "時間毒藥已出清；大跌日逢高變現（正確）"
+    },
+    {
+      "code": "3483",
+      "name": "力致",
+      "cleared_on": "2026-07-14",
+      "note": "兩日不站回後出清"
+    },
+    {
+      "code": "00882",
+      "name": "中信中國高股息",
+      "cleared_on": "2026-07-14",
+      "note": "弱勢／錯誤策略出清"
+    },
+    {
+      "code": "5469",
+      "name": "瀚宇博",
+      "cleared_on": "2026-07-15",
+      "exit_price": 76.5,
+      "cost": 87.5,
+      "shares": 1000,
+      "pnl_twd": -11000,
+      "pnl_pct": -12.57,
+      "note": "紀律停損出清（5日低／防守破）"
+    },
+    {
+      "code": "6191",
+      "name": "精成科",
+      "cleared_on": "2026-07-15",
+      "exit_price": 96.8,
+      "cost": 102.0,
+      "shares": 1000,
+      "pnl_twd": -5200,
+      "pnl_pct": -5.1,
+      "note": "紀律停損出清（5日低／防守破）"
+    }
+  ],
+  "force_exit_codes": [],
+  "multi_asset_summary": {
+    "gold_g": 60,
+    "usd": 19258.31,
+    "deployable_cash_twd": 2000000,
+    "pause_us_ib": true
+  }
+}

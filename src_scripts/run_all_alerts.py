@@ -127,6 +127,8 @@ def main():
         codes.append(run_script("scan_black_swan.py", sw))
 
     if args.mode in ("all", "close_confirm"):
+        # 先對齊持股／清過期 pending，再掃
+        codes.append(run_script("sync_runtime_state.py", []))
         # 輕量刷新 levels，避免雲端用過期 as_of 判停損
         codes.append(run_script("refresh_levels_live.py", []))
         sw = list(common)
@@ -144,6 +146,8 @@ def main():
         _mark_close_confirm()
 
     if args.mode in ("all", "eod"):
+        # 先 scrub 持股／過期報告；EOD 結束時 merge_pending 再寫隔日提醒
+        codes.append(run_script("sync_runtime_state.py", []))
         codes.append(run_script("refresh_levels_live.py", []))
         eargs = list(common)
         if "--force" not in eargs:

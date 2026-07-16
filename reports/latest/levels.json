@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-15T13:55:31.211855+08:00",
-  "as_of": "2026-07-09",
+  "generated_at": "2026-07-16T09:29:40+08:00",
+  "as_of": "2026-07-15",
   "macro_level": 3,
   "force_exit_codes": [],
   "eod_actions": [
-    "正2擇時：00631L 元大台灣50正2 → Level 3，禁止加碼；既有倉視年線續抱或減碼",
+    "正2擇時：00631L → 年線上＋Level≥3：續抱、禁止加碼（非破年線減碼）",
     "債券配置：00687B 國泰20年美債 → Level 3 防禦續抱領息，不做均線停損"
   ],
   "cp_best_strategy": "00631L 買入持有",
@@ -132,34 +132,38 @@
       "name": "Vanguard S&P500",
       "status": "watchlist_us",
       "force_exit": false,
-      "close": 693.86,
+      "close": 691.1,
       "stop": null,
       "profit": null,
       "entry": 681.5803991699219,
       "add": 638.6624493408203,
-      "ma5": null,
-      "ma10": null,
-      "ma20": null,
-      "low_5d": null,
+      "ma5": 689.882,
+      "ma10": 688.422,
+      "ma20": 685.1215,
+      "low_5d": 685.26,
       "profit_rule": "us_etf",
-      "currency": "USD"
+      "currency": "USD",
+      "ma200": 639.45525,
+      "above_200ma": true
     },
     {
       "code": "QQQ",
       "name": "Invesco Nasdaq100",
       "status": "watchlist_us",
       "force_exit": false,
-      "close": 725.51,
+      "close": 719.69,
       "stop": null,
       "profit": null,
       "entry": 715.1554028320312,
       "add": 638.0016995239258,
-      "ma5": null,
-      "ma10": null,
-      "ma20": null,
-      "low_5d": null,
+      "ma5": 718.332,
+      "ma10": 719.808,
+      "ma20": 722.2135000000001,
+      "low_5d": 711.44,
       "profit_rule": "us_etf",
-      "currency": "USD"
+      "currency": "USD",
+      "ma200": 639.18735,
+      "above_200ma": true
     },
     {
       "code": "TAIEX",
@@ -214,7 +218,40 @@
       "change_pct": -40.725458136141455,
       "entry": 1754.8723095703126,
       "add": 2215.9648754882815
+    },
+    {
+      "code": "VXUS",
+      "name": "Vanguard Total International Stock",
+      "status": "watchlist",
+      "force_exit": false,
+      "close": 84.66,
+      "ma5": 84.624,
+      "ma10": 84.88,
+      "ma20": 85.28150000000001,
+      "ma200": 79.3432,
+      "above_200ma": true,
+      "low_5d": 83.78,
+      "entry": 84.624,
+      "stop": 83.78,
+      "profit": 84.88
+    },
+    {
+      "code": "QQQM",
+      "name": "Invesco Nasdaq100 (lower fee)",
+      "status": "watchlist",
+      "force_exit": false,
+      "close": 296.31,
+      "ma5": 295.748,
+      "ma10": 296.34000000000003,
+      "ma20": 297.32849999999996,
+      "ma200": 263.16285,
+      "above_200ma": true,
+      "low_5d": 292.87,
+      "entry": 295.748,
+      "stop": 292.87,
+      "profit": 296.34000000000003
     }
   ],
-  "pruned_against_my_targets": true
+  "pruned_against_my_targets": true,
+  "synced_at": "2026-07-16T09:29:40+08:00"
 }

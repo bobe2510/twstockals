@@ -37,11 +37,15 @@
     },
     "watch_grade_b": {
       "urgency": "eod_action",
-      "description": "觀測評等B＝允許小買（非必須）"
+      "description": "觀測＝門檻：允許買進（回測可買級｜非必須）"
     },
     "watch_grade_a": {
       "urgency": "eod_action",
-      "description": "觀測評等A/S＝較推薦分批"
+      "description": "觀測高於門檻：建議買進（回測較優級）"
+    },
+    "watch_grade_s": {
+      "urgency": "eod_action",
+      "description": "觀測評等S：強烈建議買進（回測實證高）"
     },
     "take_profit_ma5": {
       "urgency": "eod_action",
@@ -57,7 +61,7 @@
     },
     "entry_ma5": {
       "urgency": "eod_action",
-      "description": "觀測股回測5MA建倉提醒"
+      "description": "（已停用）觀測建倉改走 grade_buy_policy／watch_grades，不再用裸5MA建倉提醒"
     },
     "add_ma10": {
       "urgency": "eod_action",
@@ -85,11 +89,15 @@
     },
     "gold_buy_grade_b": {
       "urgency": "eod_action",
-      "description": "黃金≥門檻請買進"
+      "description": "黃金＝門檻：允許買進（回測可買級｜非必須）"
     },
     "gold_buy_grade_a": {
       "urgency": "eod_action",
-      "description": "黃金高於門檻較推薦"
+      "description": "黃金高於門檻：建議買進（回測較優級）"
+    },
+    "gold_buy_grade_s": {
+      "urgency": "eod_action",
+      "description": "黃金評等S：強烈建議買進（回測實證高）"
     },
     "gold_sell_zone": {
       "urgency": "eod_action",
