@@ -2,7 +2,7 @@
   "version": 4,
   "source": "grade_threshold_backtest + grade_ladder_backtest 2026-07-15; amounts for +200萬新增可投資現金（既有持倉外）",
   "note": "deployable=既有投資之外可再投入的現金。報告維持真實 D/C/B/A/S；推播僅 grade≥buy_min_grade。sizing=ladder 時依 deploy_ladder_state 只推下一階（進場／加碼）；flat 升級只改語氣不加碼。deploy_ladder_state 僅在手動對帳／匯報成交後更新，推播≠已買。現金分常態池／機會池（見 cash_pools）；GOLD.budget_twd=自新增現金可再買黃金的上限（不扣既有公克市值）。",
-  "deployable_cash_twd": 2000000,
+  "deployable_cash_twd": 1859783,
   "cash_pools": {
     "note": "常態池＝常觸發商品；機會池＝稀有訊號（美金A／VOO·VXUS S）。推播顯示剩餘機會金。",
     "opportunity_share": 0.25,

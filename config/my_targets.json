@@ -175,19 +175,33 @@
     "gold_passbook": {
       "bank": "BOT",
       "unit": "g",
-      "qty": 60,
+      "qty": 117.2,
       "pricing": "TWD",
-      "cost_per_g": null,
-      "approx_twd": null,
-      "note": "台銀黃金存摺既有 60 公克另計；budget_twd=自新增現金可再投入黃金的上限（不扣既有市值）"
+      "cost_per_g": 4197.0,
+      "approx_twd": 492088,
+      "last_buy": {
+        "date": "2026-07-16",
+        "qty_g": 57.2,
+        "twd": 240068,
+        "price_per_g": 4197.0,
+        "note": "評等B允許買進一袖；既有60g＋本次57.2g"
+      },
+      "note": "台銀黃金存摺合計 117.2 公克（既有60＋2026-07-16買57.2／240,068元）。budget_twd=自新增現金可再投入上限；已投入約24萬。"
     },
     "forex_usd": {
       "bank": "BOT",
-      "qty": 19258.31,
-      "approx_twd": 619058,
+      "qty": 16158.31,
+      "approx_twd": 520489,
       "cost_twd": null,
-      "as_of": "2026-07-14",
-      "note": "台銀外匯美金 19,258.31；約台幣 619,058（使用者對帳）"
+      "as_of": "2026-07-16",
+      "last_sell": {
+        "date": "2026-07-16",
+        "qty_usd": 3100,
+        "rate": 32.21,
+        "twd_proceeds": 99851,
+        "note": "乖離年線偏強減碼一袖"
+      },
+      "note": "台銀外匯美金 16,158.31（2026-07-16 結售 3,100＠32.21→99,851）；約台幣 520,489"
     },
     "crypto_ledger": {
       "as_of": "2026-07-14",
@@ -304,9 +318,9 @@
       },
       "add_rules": "已偏重：不加 BTC/ETH；山寨不碰"
     },
-    "total_cash_twd": 6000000,
-    "deployable_cash_twd": 2000000,
-    "cash_note": "總現金水位另計；既有持股／存摺已投資。deployable_cash_twd=200萬＝可再投入各核准商品的「新增現金」，不含已持有市值。其中約25%為機會準備金（USDTWD／VOO／VXUS），其餘常態池；推播顯示剩餘機會金。新錢只進 approved_universe.buy_allowed。",
+    "total_cash_twd": 5859783,
+    "deployable_cash_twd": 1859783,
+    "cash_note": "總現金水位另計；既有持股／存摺已投資。deployable_cash_twd＝可再投入新增現金（2026-07-16：買金−240,068、美金結售＋99,851 → 約185.98萬）。其中約25%為機會準備金（USDTWD／VOO／VXUS），其餘常態池。新錢只進 approved_universe.buy_allowed。",
     "pause_us_ib": true
   },
   "allocation_targets": {

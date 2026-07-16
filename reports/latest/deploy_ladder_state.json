@@ -1,6 +1,25 @@
 {
   "version": 1,
-  "updated_at": null,
+  "updated_at": "2026-07-16T19:37:00",
   "note": "僅在手動對帳／匯報成交後更新（推播提醒≠已買）。每商品同一持倉週期：invested_twd／max_grade_filled；出場訊號重置。",
-  "products": {}
+  "products": {
+    "GOLD": {
+      "invested_twd": 240068,
+      "max_grade_filled": "B",
+      "cycle_id": "20260716_gold_b",
+      "last_action": "enter",
+      "last_amount": 240068,
+      "updated_at": "2026-07-16T19:37:00",
+      "note": "使用者匯報：240,068 NTD／57.2g"
+    },
+    "USDTWD": {
+      "invested_twd": 0,
+      "max_grade_filled": null,
+      "cycle_id": null,
+      "last_action": "trim",
+      "last_amount": 99851,
+      "updated_at": "2026-07-16T19:37:00",
+      "note": "使用者匯報：結售 3,100 USD＠32.21 → 99,851 TWD"
+    }
+  }
 }
