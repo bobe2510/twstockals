@@ -14,9 +14,13 @@ WORKSPACE = os.environ.get(
     "TWSTOCKALS_WORKSPACE",
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..")),
 )
-POLICY_PATH = os.path.join(WORKSPACE, "config", "grade_buy_policy.json")
-LADDER_STATE_PATH = os.path.join(
-    WORKSPACE, "reports", "latest", "deploy_ladder_state.json"
+POLICY_PATH = os.environ.get(
+    "TWSTOCKALS_POLICY",
+    os.path.join(WORKSPACE, "config", "grade_buy_policy.json"),
+)
+LADDER_STATE_PATH = os.environ.get(
+    "TWSTOCKALS_LADDER_STATE",
+    os.path.join(WORKSPACE, "reports", "latest", "deploy_ladder_state.json"),
 )
 
 from tw_time import taiwan_now  # noqa: E402

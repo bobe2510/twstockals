@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "profile": "family_gold_fx",
+  "source": "scaled from main grade_buy_policy for deployable 100萬｜gold+USD only",
+  "note": "家人帳專用。可動用100萬；黃金每筆約12萬／預算30萬；美金買點袖口5萬、減碼袖口10萬。推播≠已買；成交後手動對帳 deploy_ladder。",
+  "deployable_cash_twd": 1000000,
+  "cash_pools": {
+    "note": "本帳只有黃金（常態）與美金（機會）。",
+    "opportunity_share": 0.25,
+    "routine_codes": ["GOLD"],
+    "opportunity_codes": ["USDTWD"]
+  },
+  "grade_rank": {
+    "D": 0,
+    "C": 1,
+    "B": 2,
+    "A": 3,
+    "S": 4
+  },
+  "products": {
+    "GOLD": {
+      "name": "黃金存摺",
+      "buy_min_grade": "B",
+      "budget_twd": 300000,
+      "budget_scope": "new_capital_only",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 120000,
+        "A": 120000,
+        "S": 120000
+      },
+      "sell_rule": "gold_above_50ma",
+      "sell_note": "國際金價站回 50MA → 可減／暫不加",
+      "push_windows": ["multi_day", "multi"],
+      "venue": "BOT",
+      "sizing": "flat"
+    },
+    "USDTWD": {
+      "name": "美金外匯",
+      "buy_min_grade": "A",
+      "suggest_twd": {
+        "D": 0,
+        "C": 0,
+        "B": 0,
+        "A": 50000,
+        "S": 50000
+      },
+      "sell_rule": "fx_strong_bias",
+      "sell_note": "乖離年線 ≥+1.5% → 暫不囤匯／建議減碼一袖",
+      "suggest_sell_twd": 100000,
+      "suggest_sell_twd_strong": 200000,
+      "sell_bias_strong": 3.0,
+      "sell_max_pct_of_held": 0.20,
+      "sell_note_detail": "減碼對齊主帳一袖約10萬；單次上限持倉20%。",
+      "push_windows": ["multi_day", "multi"],
+      "venue": "BOT",
+      "sizing": "flat"
+    }
+  }
+}

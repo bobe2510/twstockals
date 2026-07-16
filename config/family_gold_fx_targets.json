@@ -1,0 +1,60 @@
+{
+  "profile": "family_gold_fx",
+  "owner_note": "家人帳：只處理台銀黃金存摺＋美金外匯；無台股／美股／加密。",
+  "portfolio": [],
+  "watchlist": [],
+  "approved_universe": {
+    "mode": "gold_fx_only",
+    "deployable_twd": 1000000,
+    "buy_allowed": [
+      {
+        "id": "BOT_GOLD",
+        "venue": "BOT",
+        "risk": "low_med",
+        "sleeve": "hedge",
+        "why": "≥B 允許買進；可動用100萬下每筆約12萬、黃金新投入上限約30萬"
+      },
+      {
+        "id": "BOT_USD",
+        "venue": "BOT",
+        "risk": "low",
+        "sleeve": "cash_fx",
+        "why": "≥A 才囤匯；偏強（乖離年線≥+1.5%）減碼一袖約10萬"
+      }
+    ],
+    "buy_forbidden": ["tw_stocks", "us_etf", "crypto", "00631L", "0050"],
+    "note": "只做黃金／美金；其餘商品不操作。"
+  },
+  "multi_asset": {
+    "gold_passbook": {
+      "bank": "BOT",
+      "unit": "g",
+      "qty": 50,
+      "pricing": "TWD",
+      "cost_per_g": null,
+      "approx_twd": null,
+      "note": "家人帳既有 50 公克；budget 見 family 政策（新投入上限約30萬）"
+    },
+    "forex_usd": {
+      "bank": "BOT",
+      "qty": 15725.51,
+      "approx_twd": 506500,
+      "cost_twd": null,
+      "as_of": "2026-07-16",
+      "note": "家人帳台銀美金 15,725.51（開戶時對帳）"
+    },
+    "crypto": [],
+    "crypto_ledger": {},
+    "us_etf": [],
+    "total_cash_twd": null,
+    "deployable_cash_twd": 1000000,
+    "cash_note": "可再投入現金 100 萬（既有黃金／美金市值外）。只部署黃金＋美金。",
+    "pause_us_ib": true
+  },
+  "allocation_targets": {
+    "gold_fx": 1.0,
+    "note": "本帳配置 100% 落在黃金／美金袖口"
+  },
+  "force_exit_codes": [],
+  "cleared_positions": []
+}

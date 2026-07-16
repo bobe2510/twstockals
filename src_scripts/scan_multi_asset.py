@@ -21,8 +21,14 @@ WORKSPACE = os.environ.get(
     "TWSTOCKALS_WORKSPACE",
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..")),
 )
-REPORT_PATH = os.path.join(WORKSPACE, "reports", "latest", "multi_asset_levels.md")
-TARGETS_PATH = os.path.join(WORKSPACE, "config", "my_targets.json")
+REPORT_PATH = os.environ.get(
+    "TWSTOCKALS_MULTI_REPORT",
+    os.path.join(WORKSPACE, "reports", "latest", "multi_asset_levels.md"),
+)
+TARGETS_PATH = os.environ.get(
+    "TWSTOCKALS_TARGETS",
+    os.path.join(WORKSPACE, "config", "my_targets.json"),
+)
 
 sys.path.insert(0, os.path.join(WORKSPACE, "src_scripts"))
 from notify import notify, load_alert_rules, already_sent  # noqa: E402
