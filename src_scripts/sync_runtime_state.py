@@ -49,6 +49,30 @@ def _load_targets() -> dict:
         return json.load(f)
 
 
+def _crypto_rows(multi: dict) -> list:
+    rows = []
+    for c in multi.get("crypto") or []:
+        rows.append(
+            {
+                "symbol": c.get("symbol"),
+                "name": c.get("name"),
+                "qty": c.get("qty"),
+                "venues": c.get("venues") or [],
+                "approx_twd_total_crypto": c.get("approx_twd_total_crypto"),
+                "note": c.get("note"),
+            }
+        )
+    return rows
+
+
+def _crypto_approx_twd(multi: dict) -> int | None:
+    for c in multi.get("crypto") or []:
+        v = c.get("approx_twd_total_crypto")
+        if v is not None:
+            return int(v)
+    return None
+
+
 def sync_holdings(targets: dict, now_iso: str) -> None:
     multi = targets.get("multi_asset") or {}
     rows = []
@@ -65,6 +89,8 @@ def sync_holdings(targets: dict, now_iso: str) -> None:
         )
     gold = multi.get("gold_passbook") or {}
     fx = multi.get("forex_usd") or {}
+    ledger = multi.get("crypto_ledger") or {}
+    crypto_rows = _crypto_rows(multi)
     doc = {
         "as_of": now_iso,
         "portfolio": rows,
@@ -75,12 +101,25 @@ def sync_holdings(targets: dict, now_iso: str) -> None:
             "usd": fx.get("qty"),
             "deployable_cash_twd": multi.get("deployable_cash_twd"),
             "pause_us_ib": bool(multi.get("pause_us_ib")),
+            "crypto_approx_twd": _crypto_approx_twd(multi),
+            "crypto_ledger_as_of": ledger.get("as_of"),
         },
+        "crypto_holdings": crypto_rows,
+        "crypto_ledger": {
+            "as_of": ledger.get("as_of"),
+            "binance": ledger.get("binance") or {},
+            "bitopro": ledger.get("bitopro") or {},
+            "note": ledger.get("note"),
+        }
+        if ledger
+        else None,
     }
+    if doc["crypto_ledger"] is None:
+        del doc["crypto_ledger"]
     os.makedirs(LATEST, exist_ok=True)
     with open(HOLDINGS, "w", encoding="utf-8") as f:
         json.dump(doc, f, ensure_ascii=False, indent=2)
-    print(f"holdings.json ← {len(rows)} 檔持倉")
+    print(f"holdings.json ← {len(rows)} 檔持倉｜{len(crypto_rows)} 檔加密")
 
 
 def scrub_levels(targets: dict, now_iso: str) -> None:
@@ -163,6 +202,25 @@ def write_current_state(targets: dict, now) -> None:
         lines.append(
             f"* `{x.get('code')}` {x.get('name')}｜{x.get('cleared_on')}｜{x.get('note') or ''}\n"
         )
+    crypto_rows = _crypto_rows(multi)
+    if crypto_rows:
+        approx = _crypto_approx_twd(multi)
+        lines.append("\n## 加密持倉\n\n")
+        if approx is not None:
+            lines.append(f"* 全倉粗估約 **{approx:,}** TWD（已偏重，勿再加碼）  \n")
+        ledger = multi.get("crypto_ledger") or {}
+        if ledger.get("as_of"):
+            lines.append(f"* 交易所明細基準日：**{ledger['as_of']}**  \n")
+        lines.append("\n| 代號 | 名稱 | 數量 | 場所 |\n")
+        lines.append("|------|------|------|------|\n")
+        for c in crypto_rows:
+            venues = "、".join(c.get("venues") or []) or "—"
+            qty = c.get("qty")
+            qty_s = f"{qty:g}" if isinstance(qty, (int, float)) else (qty or "—")
+            lines.append(
+                f"| `{c.get('symbol')}` | {c.get('name')} | {qty_s} | {venues} |\n"
+            )
+        lines.append("\n")
     lines.extend(
         [
             "\n## 策略摘要（現行）\n\n",
@@ -172,7 +230,7 @@ def write_current_state(targets: dict, now) -> None:
             "* 美債 `00687B`：`gradual_exit` 逢彈分批，不加碼  \n",
             "* 個股殘倉（2301／3484）：收盤確認停損／移動停利；不新開個股  \n",
             "* 買點用詞：=門檻**允許買進**／較優**建議買進**／S**強烈建議買進**  \n",
-            "* 加密：偏重 → 不加碼；破 50MA 可減參考  \n\n",
+            "* 加密：偏重 → 不加碼；破 50MA 可減參考（午間 `crypto_noon` 推播）  \n\n",
             "## 過期報告處理\n\n",
             "* 已對 `levels.json`／`holdings.json`／`eod_pending_ops` 做 scrub  \n",
             "* `portfolio_and_watchlist.md` 若仍含反1／00882 出清窗 → 頂部會被蓋上過期警告  \n",

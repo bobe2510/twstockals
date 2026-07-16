@@ -203,9 +203,21 @@ def main():
         "multi": f"多資產晚報 {tw.strftime('%m/%d %H:%M')}（台北）",
         "all": f"警報整合 {tw.strftime('%m/%d %H:%M')}（台北）",
     }
+    batch_keys = {
+        "multi_day": ("MULTI", "multi_day_digest"),
+        "multi": ("MULTI", "multi_evening_digest"),
+        "eod": ("BATCH", "eod_batch_digest"),
+        "close_confirm": ("BATCH", "close_confirm_digest"),
+        "preopen": ("BATCH", "preopen_digest"),
+        "crypto_noon": ("CRYPTO", "crypto_noon_digest"),
+        "intraday": ("BATCH", "intraday_digest"),
+    }
+    sym, rid = batch_keys.get(args.mode, ("BATCH", "batch_digest"))
     flush_notify_batch(
         mode_titles.get(args.mode, f"警報摘要 {tw.strftime('%m/%d %H:%M')}（台北）"),
         force=args.force_notify,
+        symbol=sym,
+        rule_id=rid,
     )
 
     sys.exit(1 if bad else 0)

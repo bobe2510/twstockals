@@ -268,6 +268,8 @@ def flush_notify_batch(
     *,
     force: bool = False,
     dry_run: Optional[bool] = None,
+    symbol: str = "BATCH",
+    rule_id: str = "batch_digest",
 ) -> bool:
     """Merge pending batch items into one Telegram/Email."""
     state = _load_json(NOTIFY_BATCH_PATH, {"items": []})
@@ -296,13 +298,21 @@ def flush_notify_batch(
     ok = notify(
         title=title,
         body=body[:3500],
-        symbol="BATCH",
-        rule_id="batch_digest",
+        symbol=symbol,
+        rule_id=rule_id,
         urgency="emergency" if emergency else "eod_action",
         force=force,
         dry_run=dry_run,
     )
-    clear_notify_batch()
+    if ok:
+        for it in items:
+            sym = str(it.get("symbol") or "")
+            rid = str(it.get("rule_id") or "")
+            if sym and rid:
+                mark_sent(sym, rid, urgency=str(it.get("urgency") or "eod_action"))
+        clear_notify_batch()
+    else:
+        print(f"[notify] batch kept ({len(items)} items) — flush skipped")
     return ok
 
 

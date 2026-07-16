@@ -25,7 +25,7 @@ REPORT_PATH = os.path.join(WORKSPACE, "reports", "latest", "multi_asset_levels.m
 TARGETS_PATH = os.path.join(WORKSPACE, "config", "my_targets.json")
 
 sys.path.insert(0, os.path.join(WORKSPACE, "src_scripts"))
-from notify import notify, load_alert_rules  # noqa: E402
+from notify import notify, load_alert_rules, already_sent  # noqa: E402
 from market_data import fetch_daily  # noqa: E402
 from tw_time import taiwan_now  # noqa: E402
 from grade_buy_policy import (  # noqa: E402
@@ -37,7 +37,6 @@ from grade_buy_policy import (  # noqa: E402
     product_policy,
     push_short_label,
     push_verb,
-    record_ladder_fill,
     reset_ladder_cycle,
 )
 
@@ -335,7 +334,7 @@ def main():
             )
         lines.append(
             f"* 推播門檻：≥**{min_g}**｜sizing=`{applied.get('sizing') or 'flat'}`"
-            f"｜已填階 **{filled or '—'}**  \n"
+            f"｜已成交階 **{filled or '—'}**（手動對帳）  \n"
         )
         lines.append(f"\n### 評等 **{g['grade']}**｜")
         verb = push_verb(stance, action=action if action in ("enter", "add") else "enter")
@@ -349,7 +348,7 @@ def main():
         elif g["grade"] in ("B", "A", "S") and room <= 0:
             lines.append("預算已滿／無剩餘額度（**0** 元）\n\n")
         else:
-            lines.append(f"暫不買（低於門檻 {min_g}、同階已推、或金額 0）\n\n")
+            lines.append(f"暫不買（低於門檻 {min_g} 或金額 0）\n\n")
         lines.append(f"{g['reason']}  \n\n")
 
         # 出場優先：站回 50MA → 重置階梯、不推買
@@ -393,10 +392,12 @@ def main():
                 f"距高點 {g['from_peak']:+.1f}%｜止穩={'Y' if g['stabilized'] else 'N'}\n"
                 f"執行：台銀 App（銀行營業時間）。"
             )
-            actions.append(("GOLD", rule, "eod_action", title, msg))
-            ladder_state = record_ladder_fill(
-                "GOLD", g["grade"], g["suggest_twd"], action, state=ladder_state
-            )
+            force_notify = "--force-notify" in sys.argv
+            if not force_notify and already_sent("GOLD", rule):
+                lines.append(f"* **推播**：略過（24h 內已推 {g['grade']} 買點提醒）  \n")
+            else:
+                actions.append(("GOLD", rule, "eod_action", title, msg))
+                lines.append(f"* **推播**：{title}  \n")
 
         if gold["change_pct"] <= gold_shock:
             msg = f"黃金急跌 {gold['change_pct']:+.2f}%（閾值 {gold_shock}%）。急跌中不追买。"
@@ -425,7 +426,7 @@ def main():
             lines.append(f"* 50MA：{ma50:.4f}  \n")
         lines.append(
             f"* 評等 **{ug['grade']}**｜推播門檻 ≥**{min_g}**"
-            f"｜已填階 **{applied.get('max_grade_filled') or '—'}**  \n"
+            f"｜已成交階 **{applied.get('max_grade_filled') or '—'}**（手動對帳）  \n"
         )
         lines.append(f"* {ug['reason']}  \n")
 
@@ -455,9 +456,6 @@ def main():
             )
             actions.append(("USDTWD", "fx_buy_zone", "eod_action", title, msg))
             lines.append(f"* **推播**：{title}  \n")
-            ladder_state = record_ladder_fill(
-                "USDTWD", ug["grade"], amt, action, state=ladder_state
-            )
         elif stance in ("recommend", "strong", "prefer") and applied.get("blocked") == "flat_no_add":
             lines.append("* **狀態**：建議級（flat：升級不加碼）。  \n")
         elif bias200 is not None and bias200 >= 1.5:
@@ -465,16 +463,21 @@ def main():
                 "美元偏強，暫不囤匯"
             )
             lines.append(f"* **狀態**：{sell_note}  \n")
-            ladder_state = reset_ladder_cycle("USDTWD", state=ladder_state)
-            actions.append(
-                (
-                    "USDTWD",
-                    "fx_sell_zone",
-                    "eod_action",
-                    "美金偏強｜暫不囤匯",
-                    f"{sell_note}\nUSD/TWD {fx:.4f}｜乖離年線 {bias200:+.1f}%。",
+            if int(applied.get("invested_twd") or 0) > 0:
+                ladder_state = reset_ladder_cycle("USDTWD", state=ladder_state)
+            force_notify = "--force-notify" in sys.argv
+            if not force_notify and already_sent("USDTWD", "fx_sell_zone"):
+                lines.append("* **推播**：略過（24h 內已推美金偏強提醒）  \n")
+            else:
+                actions.append(
+                    (
+                        "USDTWD",
+                        "fx_sell_zone",
+                        "eod_action",
+                        "美金偏強｜暫不囤匯",
+                        f"{sell_note}\nUSD/TWD {fx:.4f}｜乖離年線 {bias200:+.1f}%。",
+                    )
                 )
-            )
         else:
             lines.append("* **狀態**：未達推播門檻／同階已推，觀望。  \n")
 
@@ -632,19 +635,16 @@ def main():
         f.write("".join(lines))
 
     if actions:
-        body_lines = []
-        for i, (_, _, urg, title, msg) in enumerate(actions, 1):
-            tag = "🚨" if urg == "emergency" else "📋"
-            body_lines.append(f"{tag} {i}. {title}\n{msg}")
-        top_urg = "emergency" if any(a[2] == "emergency" for a in actions) else "eod_action"
-        notify(
-            title=f"多資產摘要 {now.strftime('%m/%d %H:%M')}（台北｜{len(actions)} 項）",
-            body="\n".join(body_lines)[:3500] + "\n\n詳見 reports/latest/multi_asset_levels.md",
-            symbol="MULTI",
-            rule_id="multi_asset_digest",
-            urgency=top_urg,
-            force=("--force-notify" in sys.argv),
-        )
+        force_notify = "--force-notify" in sys.argv
+        for sym, rule, urg, title, msg in actions:
+            notify(
+                title=title,
+                body=f"{msg}\n\n詳見 reports/latest/multi_asset_levels.md"[:3500],
+                symbol=sym,
+                rule_id=rule,
+                urgency=urg,
+                force=force_notify,
+            )
 
     print(f"報告已寫入 {REPORT_PATH}；觸發 {len(actions)} 項")
 

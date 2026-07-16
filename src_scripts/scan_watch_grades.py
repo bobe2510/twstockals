@@ -29,7 +29,7 @@ REPORT_PATH = os.path.join(WORKSPACE, "reports", "latest", "watch_grades.md")
 TARGETS_PATH = os.path.join(WORKSPACE, "config", "my_targets.json")
 
 sys.path.insert(0, os.path.join(WORKSPACE, "src_scripts"))
-from notify import notify, load_alert_rules  # noqa: E402
+from notify import notify, load_alert_rules, already_sent  # noqa: E402
 from market_data import fetch_daily  # noqa: E402
 from trade_levels import entry_plan_for_symbol  # noqa: E402
 from tw_time import taiwan_now  # noqa: E402
@@ -43,7 +43,6 @@ from grade_buy_policy import (  # noqa: E402
     product_policy,
     push_short_label,
     push_verb,
-    record_ladder_fill,
     reset_ladder_cycle,
 )
 from eod_pending_ops import append_watch_ops  # noqa: E402
@@ -534,7 +533,7 @@ def main():
         elif g["grade"] in ("B", "A", "S") and applied.get("blocked"):
             lines.append("**觀測**（暫停新資金／示意 0 元）\n\n")
         else:
-            lines.append(f"暫不買（低於門檻 {min_g}、同階已推、或 0 元）\n\n")
+            lines.append(f"暫不買（低於門檻 {min_g} 或 0 元）\n\n")
         lines.append(f"{g['reason']}  \n\n")
         entry_txt = entry_plan_for_symbol(
             s, code=code, market=market, grade=str(g.get("grade") or "")
@@ -562,20 +561,20 @@ def main():
                     else "watch_grade_b"
                 )
             )
-            actions.append((code, rule, title, msg))
-            ladder_state = record_ladder_fill(
-                code, g["grade"], g["suggest_twd"], action, state=ladder_state
-            )
-            # 0050／正2 進場／加碼 → 寫入隔日 08:30 提醒（僅正式 EOD 時段）
-            if code in ("0050", "00631L") and (
-                "--save-pending" in sys.argv or now.hour >= 14
-            ):
-                append_watch_ops(
-                    now.strftime("%Y-%m-%d"),
-                    code,
-                    f"{title}｜{msg.split(chr(10))[0][:120]}",
-                    as_of_ts=now.isoformat(timespec="seconds"),
-                )
+            force_notify = "--force-notify" in sys.argv
+            if not force_notify and already_sent(code, rule):
+                lines.append(f"* **推播**：略過（24h 內已推 {g['grade']} 買點提醒）  \n")
+            else:
+                actions.append((code, rule, title, msg))
+                if code in ("0050", "00631L") and (
+                    "--save-pending" in sys.argv or now.hour >= 14
+                ):
+                    append_watch_ops(
+                        now.strftime("%Y-%m-%d"),
+                        code,
+                        f"{title}｜{msg.split(chr(10))[0][:120]}",
+                        as_of_ts=now.isoformat(timespec="seconds"),
+                    )
     if pause_ib:
         lines.append("## IB 狀態\n\n")
         lines.append(
