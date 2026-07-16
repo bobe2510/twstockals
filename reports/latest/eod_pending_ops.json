@@ -1,13 +1,8 @@
 {
-  "as_of": "2026-07-14",
-  "as_of_ts": "2026-07-15T23:00:26",
-  "items": [
-    {
-      "code": "00631L",
-      "text": "正2 00631L｜成本 37｜現價 40 → 【減碼】大盤破年線；建議先賣約 1/3",
-      "source": "eod"
-    }
-  ],
-  "reminded_at": "2026-07-15T23:00:27+08:00",
-  "reminded_for_as_of": "2026-07-14"
+  "as_of": null,
+  "as_of_ts": "2026-07-16T09:18:18",
+  "items": [],
+  "reminded_at": null,
+  "reminded_for_as_of": null,
+  "cleared_reason": "manual_clear"
 }
