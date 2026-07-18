@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "objective": "風險調整後可執行長期財富（CP 哲學），非無約束最大終值。階段1 PASS_CP（MDD容許3pt）後實作。",
+  "phase1_verdict": "PASS_CP",
+  "phase1_note": "B 僅年線袖口 vs A：ΔCP+15.2，MDD惡化2.5pt≤3pt。C 現金版不採為進場預設。",
+  "priority": ["sl", "rebalance_trim", "tp", "add", "enter", "raise_deploy_budget", "lower_deploy_budget", "gate_blocked"],
+  "capital_deployment": {
+    "deploy_ratio_by_level": {"1": 0.4, "2": 0.3, "3": 0.15},
+    "cash_floor_pct_of_liquid": 0.5,
+    "step_twd": 100000,
+    "rationale": "總現金先保留地板；可再投入上限隨 Level 調整（600先投200類）",
+    "reenable_when": "Level 回升或人工確認後才改 my_targets.deployable_cash_twd"
+  },
+  "roles": {
+    "core_tw_lev": {
+      "codes": ["00631L"],
+      "allocation_key": "tw_lev_00631L",
+      "entry": {
+        "gate_type": "conditional",
+        "when": ["grade>=B", "macro_level<=1", "taiex_above_200ma"],
+        "block_when": ["macro_level>=3", "taiex_below_200ma"],
+        "rationale": "正2槓桿：空頭／破年線加碼期望差（年線擇時）",
+        "reenable_when": "Level回1且收盤站回年線",
+        "suggest_ref": "grade_buy_policy.products.00631L"
+      },
+      "add": {
+        "gate_type": "conditional",
+        "when": ["grade>=B", "macro_level<=1", "taiex_above_200ma", "near_10ma_or_stabilized"],
+        "block_when": ["macro_level>=3", "taiex_below_200ma", "over_allocation"],
+        "rationale": "同進場；Level≥3禁止加倉",
+        "reenable_when": "Level回1且站回年線且未超配"
+      },
+      "take_profit": {
+        "rules": ["over_allocation_rebalance_only"],
+        "note": "無常規10MA停利（階段1 B 規則／PASS_CP）"
+      },
+      "stop": {
+        "rules": ["taiex_below_200ma_sleeve_trim"],
+        "trim_frac": 0.333,
+        "note": "破年線先減約1/3（整張）；狀態機防重複"
+      }
+    },
+    "core_tw": {
+      "codes": ["0050"],
+      "allocation_key": "tw_core_0050",
+      "entry": {
+        "gate_type": "conditional",
+        "when": ["grade>=B", "macro_level<=2"],
+        "rationale": "台股底倉；低配優先補",
+        "reenable_when": "評等達門檻且 Level≤2"
+      },
+      "add": {
+        "gate_type": "conditional",
+        "when": ["grade>=B", "macro_level==1", "near_10ma"],
+        "block_when": ["macro_level>=3", "over_allocation"],
+        "rationale": "Level1近10MA可加；Level3禁止",
+        "reenable_when": "Level回1"
+      },
+      "take_profit": {"rules": ["over_allocation_rebalance", "optional_ma10_trim_if_profit"]},
+      "stop": {"rules": ["macro_level>=3_sleeve_or_ma20"], "trim_frac": 0.333}
+    },
+    "gradual_exit": {
+      "codes": ["00687B"],
+      "allocation_key": "bonds",
+      "target_weight": 0,
+      "entry": {
+        "gate_type": "structural",
+        "allowed": false,
+        "rationale": "長天期美債目標配置→0；出清通道非加碼標的",
+        "reenable_when": "allocation_targets 重新納入債券且改 role"
+      },
+      "add": {
+        "gate_type": "structural",
+        "allowed": false,
+        "rationale": "不加碼、不攤平",
+        "reenable_when": "同上"
+      },
+      "take_profit": {"rules": ["bounce_trim_to_zero"], "trim_frac": 0.333},
+      "stop": {"rules": ["no_cut_in_valley"], "note": "短均下等彈"}
+    },
+    "stock_residual": {
+      "codes": ["2301", "3484"],
+      "allocation_key": "tw_stocks",
+      "entry": {
+        "gate_type": "structural",
+        "allowed": false,
+        "rationale": "宇宙不擴個股；殘倉 exit-only",
+        "reenable_when": "AGENTS／宇宙政策改為允許新開個股"
+      },
+      "add": {
+        "gate_type": "structural",
+        "allowed": false,
+        "rationale": "禁止加碼",
+        "reenable_when": "同上"
+      },
+      "take_profit": {"rules": ["roi_12_25", "trailing_ma_if_profit"]},
+      "stop": {"rules": ["low_5d_two_day_grace"], "note": "兩日不站回才出清"}
+    },
+    "gold": {
+      "codes": ["GOLD"],
+      "allocation_key": "gold_fx",
+      "entry": {
+        "gate_type": "conditional",
+        "when": ["grade>=B"],
+        "rationale": "乖離評等≥B",
+        "reenable_when": "評等回≥B且未超配且未滿budget"
+      },
+      "add": {
+        "gate_type": "conditional",
+        "when": ["grade>=B", "under_budget"],
+        "block_when": ["over_allocation"],
+        "rationale": "評等節奏分批至budget滿；不因站回50MA關加（2026-07-18回測停用）",
+        "reenable_when": "評等回≥B且未超配"
+      },
+      "take_profit": {
+        "rules": ["over_allocation"],
+        "note": "買滿長抱；僅超配再平衡減碼。50MA遲滯停利已停用（gold_sleeve_backtest：20年CAGR +9.97%→+0.90%）"
+      },
+      "stop": {"rules": ["gate_block_is_not_sl"]}
+    },
+    "usd_fx": {
+      "codes": ["USDTWD"],
+      "allocation_key": "gold_fx",
+      "entry": {
+        "gate_type": "conditional",
+        "when": ["grade>=A"],
+        "rationale": "門檻A囤匯",
+        "reenable_when": "評等≥A"
+      },
+      "add": {
+        "gate_type": "conditional",
+        "when": ["grade>=A"],
+        "block_when": ["bias200>=1.5"],
+        "rationale": "偏強關加倉、改減碼",
+        "reenable_when": "乖離回落且評等≥A"
+      },
+      "take_profit": {"rules": ["bias_1p5_sleeve", "bias_3_two_sleeve", "over_allocation"]},
+      "stop": {"rules": ["same_as_mean_reversion_trim"]}
+    },
+    "us_etf": {
+      "codes": ["VOO", "VXUS", "QQQ", "QQQM"],
+      "allocation_key": "us_etf",
+      "entry": {
+        "gate_type": "temporary",
+        "when": ["grade_meets_policy", "not pause_us_ib"],
+        "rationale": "pause_us_ib 期間僅報告",
+        "reenable_when": "pause_us_ib=false 且評等達門檻"
+      },
+      "add": {
+        "gate_type": "temporary",
+        "when": ["ladder_or_flat_policy", "not pause_us_ib"],
+        "block_when": ["pause_us_ib", "over_allocation"],
+        "rationale": "IB 暫停則不加",
+        "reenable_when": "恢復 IB 且未超配"
+      },
+      "take_profit": {"rules": ["below_50ma_sleeve", "over_allocation"]},
+      "stop": {"rules": ["below_50ma_sleeve"]}
+    },
+    "crypto": {
+      "codes": ["BTC-USD", "ETH-USD"],
+      "allocation_key": "crypto",
+      "entry": {
+        "gate_type": "temporary",
+        "when": ["under_allocation_target"],
+        "block_when": ["over_allocation"],
+        "rationale": "超配先再平衡減碼，達標前不新建",
+        "reenable_when": "占比≤allocation_targets.crypto"
+      },
+      "add": {
+        "gate_type": "temporary",
+        "allowed": false,
+        "rationale": "超配或 pause_add 期間禁止加倉",
+        "reenable_when": "占比≤目標且政策允許"
+      },
+      "take_profit": {
+        "rules": ["rebalance_trim_to_target_first"],
+        "note": "主路徑＝減至目標占比，非只等破線"
+      },
+      "stop": {"rules": ["below_50ma_trim_excess_first", "then_sleeve_1_3"]}
+    }
+  }
+}

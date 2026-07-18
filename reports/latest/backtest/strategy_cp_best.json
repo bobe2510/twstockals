@@ -1,0 +1,101 @@
+{
+  "generated_at": "2026-07-13T17:38:17",
+  "backtest_start": "2015-08-25",
+  "backtest_end": "2026-07-09",
+  "total_years": 10.5,
+  "lambda_mdd": 0.25,
+  "lambda_ops": 1.5,
+  "eod_ops_weight": 0.2,
+  "best_strategy": "00631L 買入持有",
+  "best_cp": 31.85,
+  "best_cagr": 45.63,
+  "best_mdd": -55.14,
+  "best_workday_ops_per_year": 0.0,
+  "weekly_ops_estimate": 0.0,
+  "ranking": [
+    {
+      "rank": 1,
+      "name": "00631L 買入持有",
+      "cp": 31.85,
+      "cagr": 45.63,
+      "mdd": -55.14,
+      "sharpe": 1.19,
+      "trades": 0,
+      "workday_ops_per_year": 0.0,
+      "final": 51869231.0,
+      "note": "零操作但 MDD 極差"
+    },
+    {
+      "rank": 2,
+      "name": "00631L × 200MA 年線擇時 (EOD)",
+      "cp": 26.0,
+      "cagr": 36.82,
+      "mdd": -37.25,
+      "sharpe": 1.2,
+      "trades": 53,
+      "workday_ops_per_year": 1.01,
+      "final": 26931561.0,
+      "note": "收盤判定、隔日開盤調倉"
+    },
+    {
+      "rank": 3,
+      "name": "0050底倉 + 正2年線加減碼",
+      "cp": 20.83,
+      "cagr": 30.53,
+      "mdd": -32.6,
+      "sharpe": 1.19,
+      "trades": 54,
+      "workday_ops_per_year": 1.03,
+      "final": 16416028.0,
+      "note": "雙資產再平衡／年線觸發"
+    },
+    {
+      "rank": 4,
+      "name": "大盤基準 (TAIEX B&H)",
+      "cp": 10.52,
+      "cagr": 18.43,
+      "mdd": -31.63,
+      "sharpe": 1.04,
+      "trades": 0,
+      "workday_ops_per_year": 0.0,
+      "final": 5908903.0,
+      "note": "零操作基準"
+    },
+    {
+      "rank": 5,
+      "name": "0050 買入持有",
+      "cp": 10.52,
+      "cagr": 18.43,
+      "mdd": -31.63,
+      "sharpe": 1.04,
+      "trades": 0,
+      "workday_ops_per_year": 0.0,
+      "final": 5908903.0,
+      "note": "穩健底倉，零操作"
+    },
+    {
+      "rank": 6,
+      "name": "00631L × 50MA 季線擇時 (EOD)",
+      "cp": 10.15,
+      "cagr": 27.17,
+      "mdd": -48.56,
+      "sharpe": 1.04,
+      "trades": 171,
+      "workday_ops_per_year": 3.26,
+      "final": 12488992.0,
+      "note": "較敏感、摩擦較多"
+    },
+    {
+      "rank": 7,
+      "name": "個股籌碼波段 (對照 / 高操作)",
+      "cp": -120.75,
+      "cagr": 8.0,
+      "mdd": -35.0,
+      "sharpe": 0.35,
+      "trades": 840,
+      "workday_ops_per_year": 80.0,
+      "final": 2244306.0,
+      "note": "對照組：盤中高週轉，WorkdayOps 以 1.0/筆計，預期 CP 落敗"
+    }
+  ]
+}

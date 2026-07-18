@@ -1,8 +1,7 @@
 {
   "version": 4,
   "source": "grade_threshold_backtest + grade_ladder_backtest 2026-07-15; amounts for +200萬新增可投資現金（既有持倉外）",
-  "note": "deployable=既有投資之外可再投入的現金。報告維持真實 D/C/B/A/S；推播僅 grade≥buy_min_grade。sizing=ladder 時依 deploy_ladder_state 只推下一階（進場／加碼）；flat 升級只改語氣不加碼。deploy_ladder_state 僅在手動對帳／匯報成交後更新，推播≠已買。現金分常態池／機會池（見 cash_pools）；GOLD.budget_twd=自新增現金可再買黃金的上限（不扣既有公克市值）。",
-  "deployable_cash_twd": 1859783,
+  "note": "deployable=既有投資之外可再投入的現金，唯一真相＝my_targets.multi_asset.deployable_cash_twd（程式動態讀取，此檔不再存值）。報告維持真實 D/C/B/A/S；推播僅 grade≥buy_min_grade。sizing=ladder 時依 deploy_ladder_state 只推下一階（進場／加碼）；flat 升級只改語氣不加碼。deploy_ladder_state 僅在手動對帳／匯報成交後更新，推播≠已買。現金分常態池／機會池（見 cash_pools）；GOLD.budget_twd=自新增現金可再買黃金的上限（不扣既有公克市值）。",
   "cash_pools": {
     "note": "常態池＝常觸發商品；機會池＝稀有訊號（美金A／VOO·VXUS S）。推播顯示剩餘機會金。",
     "opportunity_share": 0.25,
@@ -29,8 +28,8 @@
         "A": 240000,
         "S": 240000
       },
-      "sell_rule": "gold_above_50ma",
-      "sell_note": "國際金價站回 50MA → 可減／暫不加",
+      "sell_rule": "hold_no_sell",
+      "sell_note": "買滿後長抱不賣；僅超配時再平衡減碼。2026-07-18 gold_sleeve_backtest：站回50MA出場使20年CAGR自+9.97%降至+0.90%，已停用該出場規則。",
       "push_windows": [
         "multi_day",
         "multi"
@@ -73,10 +72,9 @@
         "S": 0
       },
       "pause_add_default": true,
-      "sell_rule": "below_50ma",
-      "sell_note": "破 50MA 可減（既有偏重則不加碼）",
+      "sell_rule": "trend_200ma_or_mom12",
+      "sell_note": "趨勢複合出場：價<200MA「且」12月動量<0 → 全減；任一為多則持有。2026-07-18 trend_exit_backtest：G複合 OOS(2022~) +23.7%/-32% vs B&H +4.7%/-67%；破50MA出場已停用（全期少賺17%/年）。",
       "push_windows": [
-        "crypto_noon",
         "multi"
       ],
       "venue": "CEX"
@@ -92,10 +90,9 @@
         "S": 0
       },
       "pause_add_default": true,
-      "sell_rule": "below_50ma",
-      "sell_note": "破 50MA 可減（既有偏重則不加碼）",
+      "sell_rule": "trend_200ma",
+      "sell_note": "純200MA趨勢開關：價<200MA → 全減；站回再持有。2026-07-18 trend_exit_backtest：ETH 200MA全期 +25.7%/-74% vs B&H +12.6%/-82%，OOS +5.0%/-46% vs -10.5%/-74%；破50MA出場已停用。",
       "push_windows": [
-        "crypto_noon",
         "multi"
       ],
       "venue": "CEX"
@@ -110,7 +107,8 @@
         "A": 160000,
         "S": 160000
       },
-      "sell_rule": "below_10ma",
+      "sell_rule": "hold_no_sell",
+      "sell_note": "純長抱（B方案）：不設10MA/5日低出場；僅超配再平衡。2026-07-18 exit_rule_backtest：10MA出場27年CAGR -1.59% vs 長抱+10.90%。",
       "push_windows": [
         "close_confirm",
         "eod",
@@ -130,7 +128,8 @@
         "A": 120000,
         "S": 120000
       },
-      "sell_rule": "taiex_200_or_10ma",
+      "sell_rule": "taiex_200",
+      "sell_note": "只看大盤年線（L1）；10MA輔助出場已停用。2026-07-18 exit_rule_backtest：加10MA後27年CAGR -7.14%/MDD-96% vs 純年線+15.25%/-53%。",
       "push_windows": [
         "close_confirm",
         "eod",
@@ -150,6 +149,9 @@
         "S": 60000
       },
       "require_ib": true,
+      "trend_gate": "200ma_or_mom12",
+      "sell_rule": "trend_200ma_or_mom12",
+      "sell_note": "趨勢複合出場（同VOO）。2026-07-18 trend_exit_backtest（QQQ 27年含-83%泡沫）：G +10.04%/-55.6% vs B&H +7.90%/-83.0%；破50MA出場停用。",
       "push_windows": [
         "multi"
       ],
@@ -174,6 +176,9 @@
         "S": 60000
       },
       "require_ib": true,
+      "trend_gate": "200ma_or_mom12",
+      "sell_rule": "trend_200ma_or_mom12",
+      "sell_note": "同 QQQ（趨勢複合出場）。",
       "push_windows": [
         "multi"
       ],
@@ -189,15 +194,18 @@
     },
     "VOO": {
       "name": "Vanguard S&P500",
-      "buy_min_grade": "S",
+      "buy_min_grade": "B",
       "suggest_twd": {
         "D": 0,
         "C": 0,
-        "B": 0,
-        "A": 0,
+        "B": 100000,
+        "A": 100000,
         "S": 200000
       },
       "require_ib": true,
+      "trend_gate": "200ma_or_mom12",
+      "sell_rule": "trend_200ma_or_mom12",
+      "sell_note": "趨勢複合：價<200MA且12月動量<0 → 減碼空手；任一為多持有。2026-07-18 trend_exit_backtest（SPY 33年）：G複合 +11.09%/-32.5% vs B&H +10.82%/-55.2%。原 S-only 門檻近乎永不進場，改 B+ 分批（趨勢多方時）。",
       "push_windows": [
         "multi"
       ],
@@ -206,15 +214,18 @@
     },
     "VXUS": {
       "name": "Vanguard International ex-US",
-      "buy_min_grade": "S",
+      "buy_min_grade": "B",
       "suggest_twd": {
         "D": 0,
         "C": 0,
-        "B": 0,
-        "A": 0,
+        "B": 60000,
+        "A": 60000,
         "S": 120000
       },
       "require_ib": true,
+      "trend_gate": "200ma",
+      "sell_rule": "trend_200ma",
+      "sell_note": "純200MA開關（動量對非美無效）。2026-07-18 trend_exit_backtest（EFA 25年）：200MA +7.75%/-26.8% vs B&H +7.91%/-61.0%。原 S-only 門檻改 B+ 分批（年線上時）。",
       "push_windows": [
         "multi"
       ],

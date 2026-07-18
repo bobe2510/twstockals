@@ -47,11 +47,24 @@ def product_policy(code: str, policy: Optional[dict] = None) -> dict:
     return dict((p.get("products") or {}).get(str(code).upper()) or {})
 
 
+def _targets_deployable() -> Optional[int]:
+    """唯一真相：config/my_targets.json → multi_asset.deployable_cash_twd。"""
+    path = os.path.join(WORKSPACE, "config", "my_targets.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        v = (data.get("multi_asset") or {}).get("deployable_cash_twd")
+        return int(v) if v else None
+    except (OSError, ValueError, TypeError):
+        return None
+
+
 def cash_pools_config(policy: Optional[dict] = None) -> dict:
     p = policy or load_grade_buy_policy()
     pools = dict(p.get("cash_pools") or {})
     deployable = int(
-        pools.get("deployable_twd")
+        _targets_deployable()
+        or pools.get("deployable_twd")
         or p.get("deployable_cash_twd")
         or 2_000_000
     )

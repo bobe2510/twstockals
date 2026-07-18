@@ -30,8 +30,8 @@
         "A": 120000,
         "S": 120000
       },
-      "sell_rule": "gold_above_50ma",
-      "sell_note": "國際金價站回 50MA → 可減／暫不加",
+      "sell_rule": "hold_no_sell",
+      "sell_note": "買滿後長抱不賣；僅超配時再平衡減碼。2026-07-18 gold_sleeve_backtest：站回50MA出場使20年CAGR自+9.97%降至+0.90%，已停用該出場規則。",
       "push_windows": ["multi_day", "multi"],
       "venue": "BOT",
       "sizing": "flat"

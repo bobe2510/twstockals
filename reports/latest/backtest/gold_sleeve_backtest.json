@@ -1,0 +1,194 @@
+{
+  "generated_at": "2026-07-18T23:12:42",
+  "spread_per_side": 0.005,
+  "initial": 600000.0,
+  "range": [
+    "2004-03-24",
+    "2026-07-17"
+  ],
+  "windows": {
+    "全期": {
+      "start": "2006-08-08",
+      "end": "2026-07-17",
+      "results": {
+        "bh": {
+          "final": 3625938.149,
+          "cagr": 9.52,
+          "mdd": -38.485,
+          "cp": -0.116,
+          "trades": 1,
+          "ops_yr": 0.01,
+          "years": 19.782,
+          "buys": 1,
+          "avg_invested_pct": 96.1
+        },
+        "dca": {
+          "final": 3288550.99,
+          "cagr": 8.981,
+          "mdd": -38.485,
+          "cp": -1.004,
+          "trades": 24,
+          "ops_yr": 0.243,
+          "years": 19.782,
+          "buys": 24,
+          "avg_invested_pct": 91.6
+        },
+        "grade_ma50": {
+          "final": 716568.629,
+          "cagr": 0.902,
+          "mdd": -28.225,
+          "cp": -11.402,
+          "trades": 346,
+          "ops_yr": 3.498,
+          "years": 19.782,
+          "buys": 227,
+          "avg_invested_pct": 25.5
+        },
+        "grade_hold": {
+          "final": 3930624.135,
+          "cagr": 9.968,
+          "mdd": -38.485,
+          "cp": 0.301,
+          "trades": 3,
+          "ops_yr": 0.03,
+          "years": 19.782,
+          "buys": 3,
+          "avg_invested_pct": 95.7
+        },
+        "dip200_hold": {
+          "final": 3223652.947,
+          "cagr": 8.871,
+          "mdd": -38.485,
+          "cp": -0.796,
+          "trades": 3,
+          "ops_yr": 0.03,
+          "years": 19.782,
+          "buys": 3,
+          "avg_invested_pct": 88.6
+        }
+      }
+    },
+    "10年": {
+      "start": "2016-07-18",
+      "end": "2026-07-17",
+      "results": {
+        "bh": {
+          "final": 1814519.209,
+          "cagr": 11.756,
+          "mdd": -23.939,
+          "cp": 5.741,
+          "trades": 1,
+          "ops_yr": 0.02,
+          "years": 9.956,
+          "buys": 1,
+          "avg_invested_pct": 92.6
+        },
+        "dca": {
+          "final": 1988281.006,
+          "cagr": 12.787,
+          "mdd": -23.939,
+          "cp": 6.08,
+          "trades": 24,
+          "ops_yr": 0.482,
+          "years": 9.956,
+          "buys": 24,
+          "avg_invested_pct": 83.6
+        },
+        "grade_ma50": {
+          "final": 561867.661,
+          "cagr": -0.657,
+          "mdd": -17.479,
+          "cp": -10.059,
+          "trades": 167,
+          "ops_yr": 3.355,
+          "years": 9.956,
+          "buys": 111,
+          "avg_invested_pct": 26.4
+        },
+        "grade_hold": {
+          "final": 1835538.356,
+          "cagr": 11.886,
+          "mdd": -23.939,
+          "cp": 5.81,
+          "trades": 3,
+          "ops_yr": 0.06,
+          "years": 9.956,
+          "buys": 3,
+          "avg_invested_pct": 91.3
+        },
+        "dip200_hold": {
+          "final": 1949953.538,
+          "cagr": 12.567,
+          "mdd": -23.939,
+          "cp": 6.492,
+          "trades": 3,
+          "ops_yr": 0.06,
+          "years": 9.956,
+          "buys": 3,
+          "avg_invested_pct": 90.3
+        }
+      }
+    },
+    "5年": {
+      "start": "2021-07-19",
+      "end": "2026-07-17",
+      "results": {
+        "bh": {
+          "final": 1520177.627,
+          "cagr": 20.505,
+          "mdd": -23.939,
+          "cp": 14.46,
+          "trades": 1,
+          "ops_yr": 0.04,
+          "years": 4.984,
+          "buys": 1,
+          "avg_invested_pct": 86.2
+        },
+        "dca": {
+          "final": 1440193.709,
+          "cagr": 19.205,
+          "mdd": -23.939,
+          "cp": 11.776,
+          "trades": 24,
+          "ops_yr": 0.963,
+          "years": 4.984,
+          "buys": 24,
+          "avg_invested_pct": 69.8
+        },
+        "grade_ma50": {
+          "final": 586017.754,
+          "cagr": -0.472,
+          "mdd": -17.479,
+          "cp": -9.236,
+          "trades": 73,
+          "ops_yr": 2.929,
+          "years": 4.984,
+          "buys": 48,
+          "avg_invested_pct": 21.8
+        },
+        "grade_hold": {
+          "final": 1542426.438,
+          "cagr": 20.857,
+          "mdd": -23.939,
+          "cp": 14.692,
+          "trades": 3,
+          "ops_yr": 0.12,
+          "years": 4.984,
+          "buys": 3,
+          "avg_invested_pct": 85.7
+        },
+        "dip200_hold": {
+          "final": 1526524.717,
+          "cagr": 20.606,
+          "mdd": -23.939,
+          "cp": 14.441,
+          "trades": 3,
+          "ops_yr": 0.12,
+          "years": 4.984,
+          "buys": 3,
+          "avg_invested_pct": 85.9
+        }
+      }
+    }
+  }
+}

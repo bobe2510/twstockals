@@ -12,7 +12,7 @@
       "shares": 4000,
       "cost": 33.2,
       "policy": "gradual_exit",
-      "note": "長天期美債波動大；長期逢彈分批出清，資金轉現金／台銀美金／黃金。不加碼。"
+      "note": "長天期美債波動大；逢彈分批出清（反彈近10MA或單日彈≥2%賣1/3），資金轉現金／台銀美金／黃金。不加碼。時間底線：單月無成交則月底直接出1/3，避免無限等待。"
     },
     {
       "code": "2301",
@@ -72,7 +72,7 @@
   ],
   "approved_universe": {
     "mode": "med_low_core_plus_growth_sleeve",
-    "deployable_twd": 2000000,
+    "deployable_note": "可投入金額唯一真相＝multi_asset.deployable_cash_twd（勿在此重複）",
     "buy_allowed": [
       {
         "id": "0050",
@@ -316,7 +316,9 @@
         "default": "合併成 USDT 再丟活期",
         "do_not_churn": "利率差很小不要來回換"
       },
-      "add_rules": "已偏重：不加 BTC/ETH；山寨不碰"
+      "add_rules": "已偏重：不加 BTC/ETH；山寨不碰",
+      "core_exit_rules": "BTC：破200MA且12月動量負→全減；ETH：破200MA→全減（2026-07-18 trend_exit_backtest；取代破50MA可減）",
+      "dust_rule": "塵埃倉（PEPE/SXT/NOT/CGPT/BNB零頭/POL/USDC零頭）：合計不足萬元、不設停損；手續費可行時一次性換 USDT 清倉，禁止加碼"
     },
     "total_cash_twd": 5859783,
     "deployable_cash_twd": 1859783,
@@ -384,11 +386,10 @@
         "恐慌日留現金，收盤確認後隔日／13:40後再買"
       ],
       "sell_reduce": [
-        "移動停利：收盤跌破 10MA（一般）或 5MA（若已很強）",
-        "達標停利：報酬約+12%可先賣1/3，+25%再賣1/3（可選）",
-        "硬停損：收盤跌破5日低（約13:10確認，不盤中殺）"
+        "純長抱（B方案）：不設移動停利／硬停損（2026-07-18 exit_rule_backtest：10MA出場27年CAGR -1.59% vs 長抱+10.90%）",
+        "僅配置超標時再平衡減碼"
       ],
-      "hold_default": "長抱底倉，少操作"
+      "hold_default": "長抱底倉，零出場操作"
     },
     "00631L": {
       "role": "台股進攻袖（正2）",
@@ -398,8 +399,8 @@
         "既有部位可續抱若年線未破；新錢修復期優先 0050 再正2"
       ],
       "sell_reduce": [
-        "主規則：大盤收盤跌破年線(200MA) → 正2減碼／空倉（EOD確認）",
-        "輔助：收盤跌破移動停利(5/10MA)可先減，不必一次砍光",
+        "唯一規則：大盤收盤跌破年線(200MA) → 正2減碼／空倉（EOD確認）",
+        "5/10MA輔助出場已停用（2026-07-18 exit_rule_backtest：加10MA後CAGR -7.14%/MDD-96%）",
         "禁止：開盤恐慌市價砍；跟外資盤中殺低"
       ],
       "hold_default": "CP高可長抱，但用年線當總開關"

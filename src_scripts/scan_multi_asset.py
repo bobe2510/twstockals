@@ -79,16 +79,32 @@ def gold_budget_and_room(multi: dict, bot_px: float, policy: dict) -> tuple[int,
     return budget, room, held
 
 
+def _parse_ymd(s: str):
+    from datetime import datetime
+
+    try:
+        return datetime.strptime(str(s)[:10], "%Y-%m-%d").date()
+    except Exception:
+        return None
+
+
 def suggest_usd_trim(
     usdtwd: dict,
     multi: dict,
     policy: dict,
     bias200: float | None,
+    *,
+    as_of=None,
 ) -> dict:
     """
     美金偏強時的建議減碼（台幣／美金）。
     對齊買點袖口金額；上限為持倉比例，避免誤作出清核心外匯。
+
+    會扣除 forex_usd.last_sell：同一偏強波段內已結售的袖口不再重複建議，
+    避免剛減完又被催第二筆。
     """
+    from tw_time import taiwan_now
+
     pol = product_policy("USDTWD", policy)
     fx = float(usdtwd.get("price") or 0)
     held = multi.get("forex_usd") or {}
@@ -107,10 +123,65 @@ def suggest_usd_trim(
     strong_amt = int(pol.get("suggest_sell_twd_strong") or base * 2)
     strong_bias = float(pol.get("sell_bias_strong") or 3.0)
     max_pct = float(pol.get("sell_max_pct_of_held") or 0.20)
+    # How many calendar days a last_sell still counts as "this bias episode"
+    credit_days = int(pol.get("sell_credit_days") or 10)
 
-    target = strong_amt if (bias200 is not None and bias200 >= strong_bias) else base
-    cap = int(held_twd * max_pct) if held_twd > 0 else target
-    sell_twd = max(0, min(target, cap)) if held_twd > 0 else target
+    strong = bool(bias200 is not None and bias200 >= strong_bias)
+    # 1.5%→一袖；≥3%→兩袖目標（第二袖才再建議）
+    sleeves_needed = 2 if strong else 1
+    target_total = strong_amt if strong else base
+
+    credited_twd = 0
+    credited_usd = 0.0
+    last_sell = held.get("last_sell") or {}
+    sell_date = _parse_ymd(last_sell.get("date") or "")
+    today = as_of or taiwan_now().date()
+    credit_note = ""
+    if sell_date is not None and (today - sell_date).days <= credit_days:
+        try:
+            credited_usd = float(last_sell.get("qty_usd") or 0)
+        except (TypeError, ValueError):
+            credited_usd = 0.0
+        try:
+            credited_twd = int(
+                float(last_sell.get("twd_proceeds") or 0)
+                or (credited_usd * fx if fx > 0 else 0)
+            )
+        except (TypeError, ValueError):
+            credited_twd = int(credited_usd * fx) if fx > 0 else 0
+        # Count as one sleeve if ≥60% of base sleeve size
+        sleeves_done = 1 if credited_twd >= int(base * 0.6) else 0
+        if credited_twd >= int(strong_amt * 0.6):
+            sleeves_done = max(sleeves_done, 2 if strong else 1)
+        credit_note = (
+            f"已計入 last_sell {sell_date} 結售 {credited_usd:,.0f} 美金"
+            f"（約 {credited_twd:,} 元），{credit_days} 日內不重複催同一袖"
+        )
+    else:
+        sleeves_done = 0
+
+    remaining_sleeves = max(0, sleeves_needed - sleeves_done)
+    if remaining_sleeves <= 0:
+        return {
+            "sell_twd": 0,
+            "sell_usd": 0.0,
+            "held_usd": held_usd,
+            "held_twd": float(held_twd),
+            "fx": fx,
+            "strong": strong,
+            "max_pct": max_pct,
+            "sleeves_needed": sleeves_needed,
+            "sleeves_done": sleeves_done,
+            "credited_twd": credited_twd,
+            "skip_reason": credit_note or "本偏強波段減碼已完成",
+        }
+
+    # Next sleeve size = one base unit (even in strong zone, second sleeve is +base)
+    next_sleeve = base
+    remaining_budget = max(0, target_total - credited_twd)
+    next_sleeve = min(next_sleeve, remaining_budget) if remaining_budget else next_sleeve
+    cap = int(held_twd * max_pct) if held_twd > 0 else next_sleeve
+    sell_twd = max(0, min(next_sleeve, cap)) if held_twd > 0 else next_sleeve
     sell_usd = (sell_twd / fx) if fx > 0 and sell_twd > 0 else 0.0
     return {
         "sell_twd": int(sell_twd),
@@ -118,8 +189,13 @@ def suggest_usd_trim(
         "held_usd": held_usd,
         "held_twd": float(held_twd),
         "fx": fx,
-        "strong": bool(bias200 is not None and bias200 >= strong_bias),
+        "strong": strong,
         "max_pct": max_pct,
+        "sleeves_needed": sleeves_needed,
+        "sleeves_done": sleeves_done,
+        "credited_twd": credited_twd,
+        "skip_reason": "" if sell_twd > 0 else (credit_note or "無需再減"),
+        "credit_note": credit_note,
     }
 
 
@@ -401,9 +477,12 @@ def main():
             lines.append(f"暫不買（低於門檻 {min_g} 或金額 0）\n\n")
         lines.append(f"{g['reason']}  \n\n")
 
-        # 出場優先：站回 50MA → 重置階梯、不推買
+        # 出場規則由 policy 控制：sell_rule=gold_above_50ma 才啟用站回50MA出場。
+        # 2026-07-18 gold_sleeve_backtest：50MA出場使20年CAGR +9.97%→+0.90%，
+        # 預設改 hold_no_sell（買滿長抱；僅超配再平衡）。
+        gold_sell_rule = (product_policy("GOLD", policy).get("sell_rule") or "").strip()
         above_50 = bool(gold.get("ma50") and gold["price"] > gold["ma50"])
-        if above_50:
+        if above_50 and gold_sell_rule == "gold_above_50ma":
             sell_note = product_policy("GOLD", policy).get("sell_note") or (
                 "國際金價站回 50MA → 可減／暫不加"
             )
@@ -515,13 +594,18 @@ def main():
             trim = suggest_usd_trim(usdtwd, multi, policy, bias200)
             sell_twd = int(trim["sell_twd"])
             sell_usd = float(trim["sell_usd"])
-            wan = sell_twd // 10000
+            wan = sell_twd // 10000 if sell_twd else 0
             lines.append(f"* **狀態**：{sell_note}  \n")
+            if trim.get("credit_note") or trim.get("skip_reason"):
+                lines.append(
+                    f"* **已執行抵扣**：{trim.get('credit_note') or trim.get('skip_reason')}  \n"
+                )
             if sell_twd > 0 and trim["held_usd"] > 0:
                 lines.append(
                     f"* **建議減碼**：約 **{sell_usd:,.0f}** 美金"
                     f"（約 **{sell_twd:,}** 元／{wan}萬台幣）"
-                    f"{'｜偏強加深（≥3%）兩袖' if trim['strong'] else '｜一袖＝買點同級'}"
+                    f"{'｜偏強加深（≥3%）第二袖' if trim['strong'] and trim.get('sleeves_done') else ''}"
+                    f"{'｜一袖＝買點同級' if not trim.get('sleeves_done') else ''}"
                     f"；持倉約 {trim['held_usd']:,.0f} 美金，單次上限 "
                     f"{int(trim['max_pct']*100)}%  \n"
                 )
@@ -529,10 +613,17 @@ def main():
                 lines.append(
                     f"* **建議減碼**：約 **{sell_twd:,}** 元台幣（持倉數量待填）  \n"
                 )
+            elif trim.get("sleeves_done"):
+                lines.append(
+                    "* **建議減碼**：**無**（本偏強波段袖口已做完，勿重複結售）  \n"
+                )
             if int(applied.get("invested_twd") or 0) > 0:
                 ladder_state = reset_ladder_cycle("USDTWD", state=ladder_state)
             force_notify = "--force-notify" in sys.argv
-            if not force_notify and already_sent("USDTWD", "fx_sell_zone"):
+            # 已抵扣完畢 → 不推「再減一筆」
+            if sell_twd <= 0 and trim.get("sleeves_done"):
+                lines.append("* **推播**：略過（last_sell 已抵扣，避免重複催賣）  \n")
+            elif not force_notify and already_sent("USDTWD", "fx_sell_zone"):
                 lines.append("* **推播**：略過（24h 內已推美金偏強提醒）  \n")
             else:
                 title = (
@@ -545,6 +636,8 @@ def main():
                     f"USD/TWD {fx:.4f}｜乖離年線 {bias200:+.1f}%"
                     f"{'（偏強加深）' if trim['strong'] else ''}。\n"
                 )
+                if trim.get("credit_note"):
+                    msg += f"{trim['credit_note']}。\n"
                 if sell_usd > 0 and trim["held_usd"] > 0:
                     msg += (
                         f"**建議減碼約 {sell_usd:,.0f} 美金**"
@@ -553,11 +646,14 @@ def main():
                         f"單次上限持倉 {int(trim['max_pct']*100)}%，非出清核心。\n"
                         f"執行：暫不囤匯；有閒錢優先黃金／現金，勿追美元。"
                     )
-                else:
+                    actions.append(
+                        ("USDTWD", "fx_sell_zone", "eod_action", title, msg)
+                    )
+                elif sell_twd > 0:
                     msg += "暫不囤匯；持倉數量待填，減碼金額以政策袖口為準。"
-                actions.append(
-                    ("USDTWD", "fx_sell_zone", "eod_action", title, msg)
-                )
+                    actions.append(
+                        ("USDTWD", "fx_sell_zone", "eod_action", title, msg)
+                    )
         else:
             lines.append("* **狀態**：未達推播門檻／同階已推，觀望。  \n")
 
@@ -637,22 +733,28 @@ def main():
             lines.append(f"* 200MA：{btc['ma200']:,.2f}（乖離 {bias200:+.2f}%）  \n")
         if pause_crypto_add:
             lines.append("* **加碼：暫停**（既有部位已偏高）。建議金額 **0**。  \n")
-        if btc.get("ma50") and btc["price"] < btc["ma50"]:
+        # 趨勢複合出場（2026-07-18 trend_exit_backtest）：破年線「且」12月動量轉負才減
+        btc_closes = btc.get("closes") or []
+        btc_mom_ok = len(btc_closes) >= 253 and btc_closes[-1] > btc_closes[-253]
+        btc_below200 = bool(btc.get("ma200") and btc["price"] < btc["ma200"])
+        if btc_below200 and not btc_mom_ok:
             sell_note = product_policy("BTC-USD", policy).get("sell_note") or (
-                "破 50MA 可減（既有偏重則不加碼）"
+                "趨勢轉空（<200MA 且 12月動量<0）→ 全減"
             )
-            bias50 = (btc["price"] - btc["ma50"]) / btc["ma50"] * 100
-            lines.append(f"* **出場參考**：{sell_note}  \n")
+            bias200 = (btc["price"] - btc["ma200"]) / btc["ma200"] * 100
+            lines.append(f"* **出場訊號**：{sell_note}  \n")
             actions.append(
                 (
                     "BTC",
                     "crypto_sell_zone",
                     "eod_action",
-                    "BTC 破季線可減",
-                    f"{sell_note}\n現價 {btc['price']:,.2f} < 50MA {btc['ma50']:,.2f}"
-                    f"（乖離 {bias50:+.1f}%）。不加碼；反彈再評估減碼。",
+                    "BTC 趨勢轉空｜建議減碼",
+                    f"{sell_note}\n現價 {btc['price']:,.2f} < 200MA {btc['ma200']:,.2f}"
+                    f"（乖離 {bias200:+.1f}%）且 12 月動量為負。EOD 確認後執行，不盤中殺。",
                 )
             )
+        elif btc_below200:
+            lines.append("* 趨勢：破年線但 12 月動量仍正 → 續抱觀察（複合規則未觸發）  \n")
         if btc["change_pct"] <= btc_shock:
             msg = f"BTC 急跌 {btc['change_pct']:+.2f}%（閾值 {btc_shock}%）。"
             actions.append(("BTC", "asset_shock", "emergency", "BTC 急跌警戒", msg))
@@ -671,20 +773,21 @@ def main():
             lines.append(f"* 200MA：{eth['ma200']:,.2f}（乖離 {bias200:+.2f}%）  \n")
         if pause_crypto_add:
             lines.append("* **加碼：暫停**（既有部位已偏高）。建議金額 **0**。  \n")
-        if eth.get("ma50") and eth["price"] < eth["ma50"]:
+        # 純 200MA 趨勢開關（2026-07-18 trend_exit_backtest：ETH 動量無增益，年線最穩）
+        if eth.get("ma200") and eth["price"] < eth["ma200"]:
             sell_note = product_policy("ETH-USD", policy).get("sell_note") or (
-                "破 50MA 可減（既有偏重則不加碼）"
+                "破 200MA → 全減（站回再持有）"
             )
-            bias50 = (eth["price"] - eth["ma50"]) / eth["ma50"] * 100
-            lines.append(f"* **出場參考**：{sell_note}  \n")
+            bias200 = (eth["price"] - eth["ma200"]) / eth["ma200"] * 100
+            lines.append(f"* **出場訊號**：{sell_note}  \n")
             actions.append(
                 (
                     "ETH",
                     "crypto_sell_zone",
                     "eod_action",
-                    "ETH 破季線可減",
-                    f"{sell_note}\n現價 {eth['price']:,.2f} < 50MA {eth['ma50']:,.2f}"
-                    f"（乖離 {bias50:+.1f}%）。不加碼；反彈再評估減碼／換 USDT。",
+                    "ETH 破年線｜建議減碼",
+                    f"{sell_note}\n現價 {eth['price']:,.2f} < 200MA {eth['ma200']:,.2f}"
+                    f"（乖離 {bias200:+.1f}%）。EOD 確認後執行；減出資金轉 USDT 活期。",
                 )
             )
         if eth["change_pct"] <= btc_shock:

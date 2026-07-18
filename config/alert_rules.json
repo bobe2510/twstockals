@@ -8,11 +8,28 @@
   "exit_priority_bounce_pct": 3.0,
   "intraday_push_stock_stops": false,
   "intraday_push_stock_plunge": false,
+  "notify_mode": "event_digest",
+  "digest_schedule": {
+    "am": "07:30",
+    "close": "13:45",
+    "pm": "19:00",
+    "skip_close_on_holiday": true,
+    "note": "固定三報；背景 scan 預設不推，僅 EVENT／DIGEST 推播"
+  },
+  "event_policies": {
+    "twd_shock_notify_clear": false,
+    "asset_shock_notify_clear": false,
+    "crypto_shock_require_below_50ma": true,
+    "stock_reclaim_days": 2,
+    "etf_reclaim_days": 1,
+    "ingest_fail_streak": 2,
+    "ingest_ok_streak": 2
+  },
   "close_confirm": {
     "enabled": true,
     "start_hhmm": "1305",
     "end_hhmm": "1325",
-    "note": "約13:10近收盤確認破防守；盤中不推個股停損以免賣在阿呆谷"
+    "note": "約13:10近收盤確認破防守；寫入 event_state，固定 13:45 digest 彙總；盤中不推個股停損"
   },
   "rules": {
     "stop_5d_low": {
@@ -26,14 +43,6 @@
     "exit_watch_1310": {
       "urgency": "eod_action",
       "description": "約13:10：台股出清倉（個股殘倉／美債等）停損停利操作狀況"
-    },
-    "preopen_core_ops": {
-      "urgency": "eod_action",
-      "description": "約08:30：前一日 EOD 有 0050／正2 建議操作則開盤前提醒"
-    },
-    "crypto_noon": {
-      "urgency": "eod_action",
-      "description": "約12:00：BTC／ETH 午間價格／均線／偏重不加碼狀態"
     },
     "watch_grade_b": {
       "urgency": "eod_action",
@@ -49,11 +58,11 @@
     },
     "take_profit_ma5": {
       "urgency": "eod_action",
-      "description": "強勢股收盤跌破5MA→移動停利（鎖定已獲利漲幅，不是停損）"
+      "description": "強勢「個股」收盤跌破5MA→移動停利；0050/00631L 等核心ETF豁免（長抱／年線制）"
     },
     "take_profit_ma10": {
       "urgency": "eod_action",
-      "description": "一般持股收盤跌破10MA→移動停利（鎖定已獲利漲幅）"
+      "description": "一般「個股」收盤跌破10MA→移動停利；0050/00631L 等核心ETF豁免（長抱／年線制）"
     },
     "take_profit_roi_partial": {
       "urgency": "eod_action",
@@ -101,7 +110,7 @@
     },
     "gold_sell_zone": {
       "urgency": "eod_action",
-      "description": "黃金站回50MA可減／暫不加"
+      "description": "（已停用 2026-07-18）黃金站回50MA可減；gold_sleeve_backtest 證實此出場毀滅價值，改買滿長抱。sell_rule=gold_above_50ma 時才會再啟用"
     },
     "gold_add_zone": {
       "urgency": "eod_action",
@@ -110,6 +119,10 @@
     "btc_buy_zone": {
       "urgency": "eod_action",
       "description": "BTC 回測50MA衛星倉小買區（若未偏重）"
+    },
+    "crypto_sell_zone": {
+      "urgency": "eod_action",
+      "description": "核心幣趨勢出場：BTC=破200MA且12月動量負（複合）；ETH=破200MA。2026-07-18 trend_exit_backtest 取代破50MA可減"
     },
     "fx_buy_zone": {
       "urgency": "eod_action",

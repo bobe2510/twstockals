@@ -72,7 +72,7 @@ def uses_stock_stop_rules(code: str, name: str = "", *, force_exit: bool = False
 def core_etf_hold_text(code: str) -> str:
     code = str(code)
     if code == "00631L":
-        return "正2：看大盤年線+Level；給成本／均線加減碼建議（非5日低硬砍）"
+        return "正2：大盤年線+Level；無常規10MA停利；破年線袖口減／超配再平衡"
     if code == "00687B" or code.endswith("87B"):
         return "美債：長期逢彈出清 → 現金／美金／黃金；不加碼、不攤平"
     if code == "0050":
@@ -135,42 +135,35 @@ def core_etf_eod_actions(
         head = "｜".join(bits)
 
         if above_200ma is False:
-            # 年線破 → 真正減碼窗
+            # 年線破 → 袖口減碼（無常規10MA停利；階段1 PASS_CP／B規則）
+            try:
+                from qty_suggest import trim_shares
+
+                # shares 未知時仍給比例文案；有持倉時由 build_position_playbook 給精確股數
+                qty_hint = "約 1/3（整張）"
+            except Exception:
+                qty_hint = "約 1/3"
             if roi_pct is not None and roi_pct > 0:
                 out.append(
-                    f"{head} → 【減碼】大盤破年線；帳面仍賺，建議先賣約 1/3～1/2 鎖定，剩倉看能否站回年線"
+                    f"{head} → 【減碼】大盤破年線；建議先賣 {qty_hint}，剩倉看能否站回年線"
+                    f"（詳 position_playbook／action_intents）"
                 )
             else:
                 out.append(
                     f"{head} → 【減碼／空倉】大盤破年線且未賺；建議分批減至空倉或極小衛星，勿攤平"
                 )
         elif macro_level >= 3:
-            # 破月線但年線仍在：不加碼；依成本與短均給續抱／小減
-            if below_ma5 or below_ma10:
-                if roi_pct is not None and roi_pct >= 3:
-                    out.append(
-                        f"{head} → 【可小減】Level3＋破短均、仍小賺；可先賣約 1/3 降波動，其餘續抱等年線"
-                    )
-                elif roi_pct is not None and roi_pct > -3:
-                    out.append(
-                        f"{head} → 【續抱、禁止加碼】Level3＋小虧／平盤破短均；"
-                        f"不砍在恐慌、不加碼；若收盤連兩日站不回 10MA({_fmt_px(ma10)}) 再考慮減 1/3"
-                    )
-                else:
-                    out.append(
-                        f"{head} → 【減碼優先於加碼】Level3＋虧損擴大；"
-                        f"可先減約 1/3～1/2 控風險，剩餘續抱年線；禁止攤平"
-                    )
-            else:
-                out.append(
-                    f"{head} → 【續抱、禁止加碼】Level3 但短均未破；既有倉續抱，新錢不做正2"
-                )
+            # 破月線但年線仍在：不加碼；不因短均做常規停利
+            out.append(
+                f"{head} → 【續抱、禁止加碼】Level3；新錢不做正2；"
+                f"減碼僅看年線（破年線才袖口減）。短均僅供觀察。"
+            )
         elif macro_level == 2:
             out.append(
                 f"{head} → 【不加碼】Level2 警戒；既有倉續抱，等 Level 回 1 或回測 10MA({_fmt_px(ma10)}) 再評估"
             )
         else:
-            # Level 1 + 年線上
+            # Level 1 + 年線上：可小加；破10MA僅警示不自動減
             if near_ma10 and (roi_pct is None or roi_pct < 8):
                 out.append(
                     f"{head} → 【可小加】年線上＋Level1＋近 10MA；"
@@ -178,8 +171,8 @@ def core_etf_eod_actions(
                 )
             elif below_ma10 and roi_pct is not None and roi_pct >= 12:
                 out.append(
-                    f"{head} → 【可移動減碼】已賺 {_fmt_roi(roi_pct)} 且破 10MA；"
-                    f"可先賣約 1/3 鎖利，其餘續抱年線"
+                    f"{head} → 【觀察】已賺 {_fmt_roi(roi_pct)} 且破 10MA；"
+                    f"**不作常規停利**（階段1 B 規則）；續抱年線，超配才再平衡"
                 )
             else:
                 out.append(
@@ -195,7 +188,8 @@ def core_etf_eod_actions(
         if below_ma5 or below_ma10:
             out.append(
                 f"{bits} → 【續抱等彈】短均下方不砍低；反彈靠近 10MA({_fmt_px(ma10)}) "
-                f"或單日彈≥2% 時賣約 1/3，資金轉現金／台銀美金／黃金"
+                f"或單日彈≥2% 時賣約 1/3，資金轉現金／台銀美金／黃金。"
+                f"時間底線：任一月份未成交任何一批 → 月底收盤價直接出 1/3，不無限等待"
             )
         elif near_ma10 or (ma5 and close and float(close) >= float(ma5)):
             out.append(
