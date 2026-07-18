@@ -1,0 +1,90 @@
+{
+  "updated_at": "2026-07-18T19:00:20+08:00",
+  "events": {
+    "macro_level": {
+      "active": true,
+      "since": "2026-07-18T11:56:51+08:00",
+      "last_change": "2026-07-18T11:56:51+08:00",
+      "notify_clear": true,
+      "meta": {
+        "level": 3
+      },
+      "reclaim_streak": 0,
+      "fail_streak": 0,
+      "ok_streak": 0
+    },
+    "fx_twd_shock_20260718": {
+      "active": false,
+      "meta": {
+        "change_pct": 0.31211082949382796,
+        "price": 32.3650016784668
+      },
+      "notify_clear": false
+    },
+    "gold_shock_GC_F_20260718": {
+      "active": false,
+      "meta": {
+        "change_pct": 0.6799441201228662,
+        "allowed": true,
+        "below_ma50": true
+      },
+      "notify_clear": false
+    },
+    "crypto_shock_BTC-USD_20260718": {
+      "active": false,
+      "meta": {
+        "change_pct": 0.13257904885013438,
+        "allowed": true,
+        "below_ma50": false
+      },
+      "notify_clear": false
+    },
+    "crypto_shock_ETH-USD_20260718": {
+      "active": false,
+      "meta": {
+        "change_pct": 0.19761880201745186,
+        "allowed": true,
+        "below_ma50": false
+      },
+      "notify_clear": false
+    },
+    "ingest_pipeline": {
+      "active": false,
+      "meta": {
+        "fail_streak": 0,
+        "ok_streak": 38
+      },
+      "ok_streak": 38,
+      "fail_streak": 0,
+      "notify_clear": true
+    },
+    "stop_2301": {
+      "active": true,
+      "since": "2026-07-18T12:20:41+08:00",
+      "last_change": "2026-07-18T12:20:41+08:00",
+      "notify_clear": true,
+      "meta": {
+        "px": 196.5,
+        "stop": 196.5,
+        "need_reclaim": 2
+      },
+      "reclaim_streak": 0,
+      "fail_streak": 0,
+      "ok_streak": 0
+    },
+    "stop_3484": {
+      "active": true,
+      "since": "2026-07-18T12:20:42+08:00",
+      "last_change": "2026-07-18T12:20:42+08:00",
+      "notify_clear": true,
+      "meta": {
+        "px": 47.0,
+        "stop": 47.0,
+        "need_reclaim": 2
+      },
+      "reclaim_streak": 0,
+      "fail_streak": 0,
+      "ok_streak": 0
+    }
+  }
+}

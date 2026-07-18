@@ -360,6 +360,12 @@ def main():
         )
         print(f"已寫 eod_pending_ops：0050／正2 操作 {len(core_items)} 項")
     print(f"EOD 清單已寫入 {EOD_REPORT_PATH}（{len(actions)} 項）")
+    try:
+        from build_position_playbook import build as build_playbook
+
+        build_playbook()
+    except Exception as e:
+        print(f"position_playbook 更新略過：{e}")
 
 
 if __name__ == "__main__":

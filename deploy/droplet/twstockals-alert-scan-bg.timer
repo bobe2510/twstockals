@@ -1,0 +1,10 @@
+[Unit]
+Description=Background event scan 10:30 Taipei
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 10:30:00
+Persistent=true
+Unit=twstockals-alert@scan_bg.service
+
+[Install]
+WantedBy=timers.target

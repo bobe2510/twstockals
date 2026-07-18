@@ -3,10 +3,12 @@
 統一行情抓取：依資產切換來源，避免只靠 Yahoo。
 
 優先順序:
-  - 美股 ETF（VOO/VXUS/QQQ…）：FinMind us_stock_price → Stooq → Yahoo
+  - 本地倉（market_crawled_cache/warehouse，TTL 內）
+  - 美股 ETF（VOO/VXUS/QQQ…）：Stooq → FinMind us_stock_price → Yahoo
+    （ingest 主源為 Stooq；本模組即時鏈仍保留 FinMind）
   - 加密：Binance 公開 API → Yahoo
   - 黃金／匯率等：Stooq → Yahoo（FinMind 通常無此代號）
-  - 台股：請繼續用 FinMind taiwan_stock_daily（本模組不包）
+  - 台股：warehouse/twse 或 FinMind taiwan_stock_daily（見 ingest_tw_eod）
 
 Yahoo 非官方 API 常限流／稀疏取樣，只當最後備援。
 """
@@ -27,6 +29,11 @@ UA = {"User-Agent": "Mozilla/5.0 (compatible; twstockals/1.0)"}
 WORKSPACE = os.environ.get("TWSTOCKALS_WORKSPACE") or os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")
 )
+
+# Cache-first defaults (hours); override via env
+_CACHE_TTL_HOURS = float(os.environ.get("TWSTOCKALS_CACHE_TTL_HOURS", "36"))
+_CACHE_TTL_CRYPTO_HOURS = float(os.environ.get("TWSTOCKALS_CACHE_TTL_CRYPTO_HOURS", "1"))
+_SKIP_CACHE = os.environ.get("TWSTOCKALS_SKIP_CACHE", "").strip() in ("1", "true", "yes")
 
 STOOQ_MAP = {
     "VOO": "voo.us",
@@ -175,7 +182,8 @@ def fetch_yahoo_daily(sym_key: str, range_: str = "10y") -> list[dict]:
         c = closes[i] if i < len(closes) else None
         if c is None:
             continue
-        d = datetime.fromtimestamp(t).strftime("%Y-%m-%d")
+        # 用 UTC 轉日期：避免 TZ=Asia/Taipei 時美股日線日期位移一天（與 Stooq 對齊）
+        d = datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d")
         o = opens[i] if i < len(opens) else None
         rows.append(
             {
@@ -220,11 +228,87 @@ def fetch_binance_klines(sym_key: str, limit: int = 1000) -> list[dict]:
     return rows
 
 
-def fetch_daily(sym_key: str, prefer: Optional[str] = None) -> list[dict]:
+def _warehouse_candidates(sym_key: str) -> list[tuple[str, str]]:
+    """Return (source_folder, path) candidates for warehouse CSV."""
+    try:
+        from ingest_common import symbol_csv_path
+    except Exception:
+        try:
+            sys.path.insert(0, os.path.dirname(__file__))
+            from ingest_common import symbol_csv_path
+        except Exception:
+            return []
+    cands: list[tuple[str, str]] = []
+    if sym_key in BINANCE_MAP:
+        cands.append(("binance", symbol_csv_path("binance", sym_key)))
+    if sym_key in STOOQ_MAP or sym_key in FINMIND_US:
+        cands.append(("stooq", symbol_csv_path("stooq", sym_key)))
+    # TW numeric / TAIEX
+    if sym_key == "TAIEX" or (sym_key[:1].isdigit() and len(sym_key) <= 6):
+        cands.append(("twse", symbol_csv_path("twse", sym_key)))
+    return cands
+
+
+def _ttl_hours_for(sym_key: str) -> float:
+    if sym_key in BINANCE_MAP:
+        return _CACHE_TTL_CRYPTO_HOURS
+    return _CACHE_TTL_HOURS
+
+
+def read_warehouse_daily(sym_key: str, *, max_age_hours: Optional[float] = None) -> list[dict]:
+    """Read warehouse CSV if fresh enough; else []."""
+    if _SKIP_CACHE:
+        return []
+    ttl = _ttl_hours_for(sym_key) if max_age_hours is None else max_age_hours
+    try:
+        from ingest_common import csv_mtime_age_hours, read_ohlc_csv
+    except Exception:
+        return []
+    for _src, path in _warehouse_candidates(sym_key):
+        age = csv_mtime_age_hours(path)
+        if age is None or age > ttl:
+            continue
+        rows = read_ohlc_csv(path)
+        if len(rows) >= 5:
+            # tag source for callers
+            for r in rows:
+                r.setdefault("source", "warehouse")
+            return rows
+    return []
+
+
+def _write_warehouse_after_fetch(sym_key: str, rows: list[dict], source: str) -> None:
+    if not rows or len(rows) < 5:
+        return
+    try:
+        from ingest_common import symbol_csv_path, write_ohlc_csv
+    except Exception:
+        return
+    folder = "binance" if source == "binance" else "stooq"
+    if sym_key == "TAIEX" or (sym_key[:1].isdigit() and source in ("twse", "finmind")):
+        folder = "twse"
+    try:
+        write_ohlc_csv(symbol_csv_path(folder, sym_key), rows, source)
+    except Exception:
+        pass
+
+
+def fetch_daily(
+    sym_key: str,
+    prefer: Optional[str] = None,
+    *,
+    use_cache: bool = True,
+) -> list[dict]:
+    if use_cache and not _SKIP_CACHE:
+        cached = read_warehouse_daily(sym_key)
+        if cached:
+            return cached
+
     if sym_key in BINANCE_MAP:
         auto = ["binance", "yahoo"]
     elif sym_key in FINMIND_US:
-        auto = ["finmind", "stooq", "yahoo"]
+        # Stooq first (droplet primary); FinMind then Yahoo
+        auto = ["stooq", "finmind", "yahoo"]
     elif sym_key in STOOQ_MAP:
         auto = ["stooq", "yahoo"]
     else:
@@ -247,12 +331,15 @@ def fetch_daily(sym_key: str, prefer: Optional[str] = None) -> list[dict]:
         else:
             rows = []
         if len(rows) >= 5:
+            if use_cache and not _SKIP_CACHE:
+                _write_warehouse_after_fetch(sym_key, rows, p)
             return rows
     return []
 
 
-def fetch_quote(sym_key: str) -> Optional[dict]:
-    rows = fetch_daily(sym_key)
+def fetch_quote(sym_key: str, *, use_cache: bool = True) -> Optional[dict]:
+    """use_cache=False：跳過 warehouse 快取直抓來源（shock 類即時檢查用）。"""
+    rows = fetch_daily(sym_key, use_cache=use_cache)
     if len(rows) < 2:
         if len(rows) == 1:
             return {

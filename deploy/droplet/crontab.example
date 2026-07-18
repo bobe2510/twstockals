@@ -1,0 +1,22 @@
+# Asia/Taipei — put in crontab after: timedatectl set-timezone Asia/Taipei
+# WS=/opt/twstockals
+# PY=$WS/.venv/bin/python
+
+SHELL=/bin/bash
+TZ=Asia/Taipei
+WS=/opt/twstockals
+PY=/opt/twstockals/.venv/bin/python
+
+# TW EOD
+0,30 14 * * 1-5 cd $WS && $PY src_scripts/run_ingest.py --job tw_eod
+30 17 * * 1-5 cd $WS && $PY src_scripts/run_ingest.py --job tw_eod
+
+# US ETF
+0 6 * * * cd $WS && $PY src_scripts/run_ingest.py --job us_eod
+
+# Gold / FX (sample; systemd timer is denser)
+0,30 10-15 * * 1-5 cd $WS && $PY src_scripts/run_ingest.py --job fx_gold
+0 */2 * * * cd $WS && $PY src_scripts/run_ingest.py --job fx_gold
+
+# Crypto
+*/15 * * * * cd $WS && $PY src_scripts/run_ingest.py --job crypto

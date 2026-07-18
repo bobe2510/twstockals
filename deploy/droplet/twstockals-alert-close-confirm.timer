@@ -1,0 +1,10 @@
+[Unit]
+Description=Close confirm background 13:10 Taipei
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 13:10:00
+Persistent=true
+Unit=twstockals-alert@close_confirm.service
+
+[Install]
+WantedBy=timers.target

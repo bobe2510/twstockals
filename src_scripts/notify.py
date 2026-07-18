@@ -103,6 +103,10 @@ def already_sent(symbol: str, rule_id: str, cooldown_hours: Optional[float] = No
     state = _load_state()
     key = _dedupe_key(symbol, rule_id)
     entry = state.get("sent", {}).get(key)
+    # DIGEST 類固定三報：以「當日一次」判定（比對日期 key），不用 24h 滑窗，
+    # 避免排程比前一日早幾分鐘觸發時整份日報被 dedupe 掉。
+    if symbol == "DIGEST":
+        return bool(entry)
     if not entry:
         # also accept any key with same symbol+rule within cooldown window
         cutoff = _now() - timedelta(hours=cooldown_hours)
@@ -331,8 +335,23 @@ def notify(
     (including dry-run). Skips when deduped unless force=True.
 
     When TWSTOCKALS_BATCH_NOTIFY=1, queues for flush_notify_batch() instead of sending.
+
+    When notify_mode=event_digest (or TWSTOCKALS_DIGEST_ONLY=1), only EVENT／DIGEST
+    symbols are sent; other scan noise is suppressed (unless force=True).
     """
+    rules = load_alert_rules()
+    digest_only = (
+        os.environ.get("TWSTOCKALS_DIGEST_ONLY", "").strip() in ("1", "true", "yes")
+        or str(rules.get("notify_mode") or "") == "event_digest"
+    )
+    if digest_only and not force and symbol not in ("EVENT", "DIGEST", "INGEST"):
+        print(f"[notify] suppressed (event_digest mode) {symbol}|{rule_id}")
+        return False
+
     if _batch_enabled():
+        if digest_only and symbol not in ("EVENT", "DIGEST", "INGEST"):
+            print(f"[notify] batch suppressed {symbol}|{rule_id}")
+            return False
         _append_batch_item(title, body, symbol=symbol, rule_id=rule_id, urgency=urgency)
         print(f"[notify] batched {symbol}|{rule_id}: {title[:60]}")
         return True

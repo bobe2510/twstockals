@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Persist / reload EOD ops for next-morning 08:30 preopen reminder (0050 / 正2)."""
+"""Persist / reload EOD ops（0050／正2 待辦）。
+
+消費端＝隔日 07:30 digest_am（獨立 08:30 preopen 推播鏈已於 2026-07 移除）。
+preopen_reminder.md 僅作 pending 的人讀快照。
+"""
 from __future__ import annotations
 
 import json

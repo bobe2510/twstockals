@@ -1,0 +1,18 @@
+[Unit]
+Description=twstockals alert mode %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=brian
+Group=brian
+Environment=TWSTOCKALS_WORKSPACE=/home/brian/twstockals
+Environment=TZ=Asia/Taipei
+Environment=TWSTOCKALS_CLOUD=1
+WorkingDirectory=/home/brian/twstockals
+ExecStart=/bin/bash -c 'WS="${TWSTOCKALS_WORKSPACE:-/home/brian/twstockals}"; PY="$WS/.venv/bin/python"; [ -x "$PY" ] || PY=python3; MODE="%i"; EXTRA=""; if [ "$MODE" = "close_confirm_backup" ]; then MODE=close_confirm; EXTRA="--backup"; fi; cd "$WS" && exec "$PY" src_scripts/run_all_alerts.py --mode "$MODE" --force --no-popup $EXTRA'
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

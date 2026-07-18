@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily digest PM 19:00 Taipei
+
+[Timer]
+OnCalendar=*-*-* 19:00:00
+Persistent=true
+Unit=twstockals-alert@digest_pm.service
+
+[Install]
+WantedBy=timers.target

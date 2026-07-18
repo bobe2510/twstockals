@@ -8,7 +8,9 @@ from FinMind.data import DataLoader
 # ==========================================
 # 設定區
 # ==========================================
-WORKSPACE = r"g:\我的雲端硬碟\dev\twstockals"
+WORKSPACE = os.environ.get("TWSTOCKALS_WORKSPACE") or os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..")
+)
 
 def load_api_keys():
     config_path = os.path.join(WORKSPACE, "config", "api_keys.json")
@@ -21,14 +23,16 @@ def load_api_keys():
     return {}
 
 API_KEYS = load_api_keys()
-FINMIND_TOKENS = API_KEYS.get("FINMIND_TOKENS", [])
+# Keep up to 4 slots in config; rotator skips blanks
+_RAW_TOKENS = API_KEYS.get("FINMIND_TOKENS", []) or []
+FINMIND_TOKENS = [str(t).strip() for t in _RAW_TOKENS if t and str(t).strip()]
 
 # ==========================================
 # Token 輪替管理器
 # ==========================================
 class TokenRotator:
     def __init__(self, tokens):
-        self.tokens = [t for t in tokens if t.strip()]
+        self.tokens = [t for t in tokens if t and str(t).strip()]
         self.current_idx = 0
         self.api = DataLoader()
         self.login_current()

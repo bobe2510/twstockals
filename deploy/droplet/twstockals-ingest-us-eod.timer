@@ -1,0 +1,10 @@
+[Unit]
+Description=US ETF EOD ingest (06:00 Taipei)
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+Unit=twstockals-ingest@us_eod.service
+
+[Install]
+WantedBy=timers.target

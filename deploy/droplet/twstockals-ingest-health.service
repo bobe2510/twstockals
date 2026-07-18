@@ -1,0 +1,13 @@
+[Unit]
+Description=twstockals warehouse health → Telegram if stale
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=brian
+Group=brian
+Environment=TWSTOCKALS_WORKSPACE=/home/brian/twstockals
+Environment=TZ=Asia/Taipei
+Environment=TWSTOCKALS_CLOUD=1
+WorkingDirectory=/home/brian/twstockals
+ExecStart=/bin/bash -c 'WS="${TWSTOCKALS_WORKSPACE:-/home/brian/twstockals}"; PY="$WS/.venv/bin/python"; [ -x "$PY" ] || PY=python3; cd "$WS" && exec "$PY" src_scripts/check_ingest_health.py --notify --quiet-ok'

@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Unified alert runner for cloud / local cron.
+Unified alert runner — event_digest model:
 
-Modes:
-  --mode all            black_swan + close_confirm + position_levels + multi_asset
-  --mode intraday       black_swan only（大盤／匯率／反1；不推個股破防守）
-  --mode close_confirm  ~13:10 近收盤確認破防守 + 出清倉停損停利（不含完整 EOD／觀測買點）
-  --mode eod            position_levels + 觀測評等（≥門檻請買進）；寫入隔日 08:30 提醒
-  --mode preopen        ~08:30 若前一日 EOD 有 0050／正2 操作 → 開盤前提醒
-  --mode crypto_noon    ~12:00 BTC／ETH 午間狀態（偏重不加碼；有訊號才推）
-  --mode multi_day      上班窗：黃金／外匯（台銀可執行）
-  --mode multi          晚間：黃金複核 + BTC/ETH + 美股觀測 + 觀測評等
+  Fixed push: digest_am (07:30) / digest_close (13:45) / digest_pm (19:00)
+  Edge push: EVENT via eval_market_events (Level / TWD / breach / shock / ingest)
+  Background scans: update reports／event_state; routine notify suppressed
+
+Legacy modes kept for manual／過渡；排程請改用 digest_* ＋ close_confirm／scan_bg。
 """
 from __future__ import annotations
 
@@ -33,14 +29,15 @@ from notify import clear_notify_batch, flush_notify_batch  # noqa: E402
 from tw_time import taiwan_now  # noqa: E402
 
 
-def run_script(name: str, extra_args: list[str]) -> int:
+def run_script(name: str, extra_args: list[str], *, batch: bool = True) -> int:
     path = os.path.join(SCRIPTS, name)
     cmd = [sys.executable, path, *extra_args]
     print(f"\n=== RUN {name} {' '.join(extra_args)} ===")
     env = os.environ.copy()
     env["TWSTOCKALS_WORKSPACE"] = ROOT
     env["PYTHONPATH"] = SCRIPTS + os.pathsep + env.get("PYTHONPATH", "")
-    env["TWSTOCKALS_BATCH_NOTIFY"] = "1"
+    if batch:
+        env["TWSTOCKALS_BATCH_NOTIFY"] = "1"
     proc = subprocess.run(cmd, cwd=ROOT, env=env)
     print(f"=== EXIT {name} code={proc.returncode} ===")
     return proc.returncode
@@ -69,34 +66,56 @@ def _close_confirm_already_ran_today() -> bool:
         return False
 
 
+def _pre_ingest(mode: str) -> None:
+    try:
+        from ingest_for_mode import run_ingest_for_mode
+
+        print(f"\n=== PRE-INGEST for mode={mode} ===")
+        ok = run_ingest_for_mode(mode, notify_on_fail=True, health_notify=True)
+        print(f"=== PRE-INGEST done ok={ok} ===")
+    except Exception as e:
+        print(f"[run_all_alerts] pre-ingest error: {e}")
+
+
+def _eval_events(*, close_confirm: bool, quiet: bool, force_notify: bool) -> None:
+    try:
+        from eval_market_events import run_all
+
+        print(f"\n=== EVAL EVENTS close_confirm={close_confirm} quiet={quiet} ===")
+        run_all(
+            close_confirm=close_confirm,
+            quiet=quiet,
+            force=force_notify,
+        )
+    except Exception as e:
+        print(f"[run_all_alerts] eval_market_events error: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
         choices=[
+            "digest_am",
+            "digest_close",
+            "digest_pm",
+            "scan_bg",
+            "close_confirm",
             "all",
             "intraday",
-            "close_confirm",
             "eod",
-            "preopen",
-            "crypto_noon",
             "multi",
             "multi_day",
         ],
-        default="all",
+        default="digest_pm",
     )
-    parser.add_argument("--force", action="store_true", help="Pass --force to child scripts")
-    parser.add_argument(
-        "--force-notify",
-        action="store_true",
-        help="繞過去重（僅手動除錯用；排程勿開）",
-    )
-    parser.add_argument(
-        "--backup",
-        action="store_true",
-        help="13:15 備援：若今日 close_confirm 已跑過則略過",
-    )
-    parser.add_argument("--no-popup", action="store_true", default=True)
+    parser.add_argument("--force", action="store_true")
+    parser.add_argument("--force-notify", action="store_true")
+    parser.add_argument("--backup", action="store_true")
+    # 預設關彈窗（雲端／droplet 安全）；本機要彈窗用 --popup 開啟
+    parser.add_argument("--popup", action="store_true", help="本機桌面彈窗（僅 Windows）")
+    parser.add_argument("--no-popup", action="store_true", help="（相容舊參數；預設即不彈窗）")
+    parser.add_argument("--no-ingest", action="store_true")
     args = parser.parse_args()
 
     print(
@@ -110,7 +129,6 @@ def main():
         sys.exit(0)
 
     clear_notify_batch()
-
     common = []
     if args.force:
         common.append("--force")
@@ -118,21 +136,29 @@ def main():
         common.append("--force-notify")
 
     codes = []
-    if args.mode in ("all", "intraday"):
-        sw = list(common)
-        if args.no_popup:
-            sw.append("--no-popup")
-        if "--force" not in sw:
-            sw.append("--force")
-        codes.append(run_script("scan_black_swan.py", sw))
 
-    if args.mode in ("all", "close_confirm"):
-        # 先對齊持股／清過期 pending，再掃
-        codes.append(run_script("sync_runtime_state.py", []))
-        # 輕量刷新 levels，避免雲端用過期 as_of 判停損
-        codes.append(run_script("refresh_levels_live.py", []))
+    # ----- Fixed digests -----
+    if args.mode == "digest_am":
+        if not args.no_ingest:
+            _pre_ingest("multi")
+        _eval_events(close_confirm=False, quiet=False, force_notify=args.force_notify)
+        codes.append(
+            run_script(
+                "build_daily_digest.py",
+                ["--slot", "am"]
+                + (["--force-notify"] if args.force_notify else []),
+                batch=False,
+            )
+        )
+        sys.exit(1 if any(c not in (0, None) for c in codes) else 0)
+
+    if args.mode == "digest_close":
+        if not args.no_ingest:
+            _pre_ingest("close_confirm")
+        codes.append(run_script("sync_runtime_state.py", [], batch=False))
+        codes.append(run_script("refresh_levels_live.py", [], batch=False))
         sw = list(common)
-        if args.no_popup:
+        if not args.popup:
             sw.append("--no-popup")
         if "--force" not in sw:
             sw.append("--force")
@@ -142,11 +168,103 @@ def main():
         if "--force" not in xargs:
             xargs.append("--force")
         codes.append(run_script("scan_exit_watch.py", xargs))
-        # 完整 EOD／觀測買點改由 14:15 eod 負責，避免與 close_confirm 重複推播
+        eargs = list(common)
+        if "--force" not in eargs:
+            eargs.append("--force")
+        eargs.append("--save-pending")
+        codes.append(run_script("scan_position_levels.py", eargs))
         _mark_close_confirm()
+        _eval_events(close_confirm=True, quiet=False, force_notify=args.force_notify)
+        codes.append(
+            run_script(
+                "build_daily_digest.py",
+                ["--slot", "close"]
+                + (["--force-notify"] if args.force_notify else []),
+                batch=False,
+            )
+        )
+        # flush any batched leftovers (usually empty in event_digest)
+        flush_notify_batch(
+            f"收盤執行報 {taiwan_now().strftime('%m/%d %H:%M')}（台北）",
+            force=args.force_notify,
+            symbol="DIGEST",
+            rule_id="digest_close_batch",
+        )
+        sys.exit(1 if any(c not in (0, None) for c in codes) else 0)
+
+    if args.mode == "digest_pm":
+        if not args.no_ingest:
+            _pre_ingest("multi")
+        margs = list(common)
+        if "--force" not in margs:
+            margs.append("--force")
+        codes.append(run_script("scan_multi_asset.py", margs))
+        wargs = list(common)
+        if "--force" not in wargs:
+            wargs.append("--force")
+        codes.append(run_script("scan_watch_grades.py", wargs))
+        _eval_events(close_confirm=False, quiet=False, force_notify=args.force_notify)
+        codes.append(
+            run_script(
+                "build_daily_digest.py",
+                ["--slot", "pm"]
+                + (["--force-notify"] if args.force_notify else []),
+                batch=False,
+            )
+        )
+        flush_notify_batch(
+            f"晚報現況 {taiwan_now().strftime('%m/%d %H:%M')}（台北）",
+            force=args.force_notify,
+            symbol="DIGEST",
+            rule_id="digest_pm_batch",
+        )
+        sys.exit(1 if any(c not in (0, None) for c in codes) else 0)
+
+    # ----- Background scan (no digest); events may still edge-push -----
+    if args.mode == "scan_bg":
+        if not args.no_ingest:
+            _pre_ingest("intraday")
+        sw = list(common)
+        if not args.popup:
+            sw.append("--no-popup")
+        if "--force" not in sw:
+            sw.append("--force")
+        codes.append(run_script("scan_black_swan.py", sw))
+        _eval_events(close_confirm=False, quiet=False, force_notify=args.force_notify)
+        flush_notify_batch("背景掃描", force=False, symbol="EVENT", rule_id="scan_bg")
+        sys.exit(1 if any(c not in (0, None) for c in codes) else 0)
+
+    # ----- Legacy paths (still event_digest-suppressed for routine notify) -----
+    if not args.no_ingest:
+        _pre_ingest(args.mode)
+
+    if args.mode in ("all", "intraday"):
+        sw = list(common)
+        if not args.popup:
+            sw.append("--no-popup")
+        if "--force" not in sw:
+            sw.append("--force")
+        codes.append(run_script("scan_black_swan.py", sw))
+        _eval_events(close_confirm=False, quiet=False, force_notify=args.force_notify)
+
+    if args.mode in ("all", "close_confirm"):
+        codes.append(run_script("sync_runtime_state.py", []))
+        codes.append(run_script("refresh_levels_live.py", []))
+        sw = list(common)
+        if not args.popup:
+            sw.append("--no-popup")
+        if "--force" not in sw:
+            sw.append("--force")
+        sw.append("--close-confirm")
+        codes.append(run_script("scan_black_swan.py", sw))
+        xargs = list(common)
+        if "--force" not in xargs:
+            xargs.append("--force")
+        codes.append(run_script("scan_exit_watch.py", xargs))
+        _mark_close_confirm()
+        _eval_events(close_confirm=True, quiet=False, force_notify=args.force_notify)
 
     if args.mode in ("all", "eod"):
-        # 先 scrub 持股／過期報告；EOD 結束時 merge_pending 再寫隔日提醒
         codes.append(run_script("sync_runtime_state.py", []))
         codes.append(run_script("refresh_levels_live.py", []))
         eargs = list(common)
@@ -159,18 +277,7 @@ def main():
             wargs.append("--force")
         wargs.append("--save-pending")
         codes.append(run_script("scan_watch_grades.py", wargs))
-
-    if args.mode == "preopen":
-        pargs = list(common)
-        if "--force" not in pargs:
-            pargs.append("--force")
-        codes.append(run_script("scan_preopen_reminder.py", pargs))
-
-    if args.mode == "crypto_noon":
-        cargs = list(common)
-        if "--force" not in cargs:
-            cargs.append("--force")
-        codes.append(run_script("scan_crypto_noon.py", cargs))
+        _eval_events(close_confirm=True, quiet=False, force_notify=args.force_notify)
 
     if args.mode == "multi_day":
         margs = list(common)
@@ -179,6 +286,7 @@ def main():
         margs.append("--day")
         margs.append("--skip-btc")
         codes.append(run_script("scan_multi_asset.py", margs))
+        _eval_events(close_confirm=False, quiet=False, force_notify=args.force_notify)
 
     if args.mode in ("all", "multi"):
         margs = list(common)
@@ -189,37 +297,16 @@ def main():
         if "--force" not in wargs:
             wargs.append("--force")
         codes.append(run_script("scan_watch_grades.py", wargs))
+        _eval_events(close_confirm=False, quiet=False, force_notify=args.force_notify)
 
     bad = [c for c in codes if c not in (0, None)]
-
     tw = taiwan_now()
-    mode_titles = {
-        "intraday": f"盤中摘要 {tw.strftime('%m/%d %H:%M')}（台北）",
-        "close_confirm": f"收盤確認 {tw.strftime('%m/%d %H:%M')}（台北）",
-        "eod": f"收盤執行 {tw.strftime('%m/%d %H:%M')}（台北）",
-        "preopen": f"開盤前提醒 {tw.strftime('%m/%d %H:%M')}（台北）",
-        "crypto_noon": f"BTC／ETH 午間 {tw.strftime('%m/%d %H:%M')}（台北）",
-        "multi_day": f"多資產上班窗 {tw.strftime('%m/%d %H:%M')}（台北）",
-        "multi": f"多資產晚報 {tw.strftime('%m/%d %H:%M')}（台北）",
-        "all": f"警報整合 {tw.strftime('%m/%d %H:%M')}（台北）",
-    }
-    batch_keys = {
-        "multi_day": ("MULTI", "multi_day_digest"),
-        "multi": ("MULTI", "multi_evening_digest"),
-        "eod": ("BATCH", "eod_batch_digest"),
-        "close_confirm": ("BATCH", "close_confirm_digest"),
-        "preopen": ("BATCH", "preopen_digest"),
-        "crypto_noon": ("CRYPTO", "crypto_noon_digest"),
-        "intraday": ("BATCH", "intraday_digest"),
-    }
-    sym, rid = batch_keys.get(args.mode, ("BATCH", "batch_digest"))
     flush_notify_batch(
-        mode_titles.get(args.mode, f"警報摘要 {tw.strftime('%m/%d %H:%M')}（台北）"),
+        f"警報摘要 {tw.strftime('%m/%d %H:%M')}（台北）",
         force=args.force_notify,
-        symbol=sym,
-        rule_id=rid,
+        symbol="DIGEST",
+        rule_id=f"legacy_{args.mode}",
     )
-
     sys.exit(1 if bad else 0)
 
 

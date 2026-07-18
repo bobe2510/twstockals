@@ -128,26 +128,26 @@ To maintain stability, reliability, and correctness in this workspace's automati
 
 ### A. Directory Map (目錄配置原則)
 *   **`src_scripts/`**: 活躍腳本（雲端推播鏈）。根目錄禁止放裸腳本。
-*   **`src_scripts/legacy/`**: 選股器、社群股、OCR、舊持股深報等（不進日常排程）。
+*   **`src_scripts/research/`**: 回測／校準腳本（少跑，不進排程；產出在 `reports/latest/backtest/`）。
 *   **`config/`**:
-    *   `config/my_targets.json`: **唯一手改真相**（portfolio／cleared／multi_asset／cash）。
+    *   `config/my_targets.json`: **唯一手改真相**（portfolio／cleared／multi_asset／cash；`deployable_cash_twd` 為可投入現金唯一欄位）。
     *   `config/alert_rules.json`、`config/grade_buy_policy.json`
-    *   `config/archive/`: 已封存設定（如 social_picks）
 *   **`reports/latest/`**: 執行產物 — 優先看 `CURRENT_STATE.md`、`eod_action_list.md`、`levels.json`、`exit_watch_1310.md`
-*   **`reports/archive/`**: 過期選股／舊持股報告
-*   **`reports/history/`**: 時間戳備份
+*   **`reports/history/`**: 時間戳備份（sync 自動保留 30 天）
+*   **`deploy/droplet/`**: 雲端主節點（DigitalOcean systemd timers）；GitHub Actions 已停用移除
+*   2026-07 精簡：`src_scripts/legacy/`、`reports/archive/`、`config/archive/` 已移除，需要時從 git 歷史找回。
 
 ### B. Execution Workflow (日常聯動)
 *   **雲端／本機統一入口**: `python src_scripts/run_all_alerts.py --mode …`
     *   `close_confirm`／`eod` 會先跑 `sync_runtime_state` + `refresh_levels_live`
 *   **對齊狀態**: `python src_scripts/sync_runtime_state.py`
-*   **出清倉監控**（持續）: `scan_exit_watch`（13:10）+ `scan_position_levels`（14:15）讀 `my_targets` 的 `gradual_exit`／個股殘倉
+*   **出清倉監控**（持續）: `scan_exit_watch`（13:10 close_confirm）+ `scan_position_levels`（13:45 digest_close 內）讀 `my_targets` 的 `gradual_exit`／個股殘倉
 *   **手動補價**: `python src_scripts/fetch_stock_data.py <symbol>`
 *   **黑天鵝**: `python src_scripts/scan_black_swan.py`（或經 run_all_alerts）
 
 ### C. Report Rules
 *   勿手改 `holdings.json`／`levels.json`／`CURRENT_STATE.md`
-*   勿依 `reports/archive/` 或過期 `portfolio_and_watchlist` 下單
+*   勿依過期 `portfolio_and_watchlist` 或任何舊報告下單
 
 ---
 
@@ -171,7 +171,7 @@ To avoid non-essential drawdowns during high-volatility regimes and prevent pani
 ## 8. Holdings-First Strategy & CP Selection (持倉監控優先與 CP 選優)
 
 ### A. Strategy Shift (策略轉向)
-*   **Default**: Do **not** open new single-stock positions. Screener／社群選股已移 `src_scripts/legacy/`，不當下單來源。
+*   **Default**: Do **not** open new single-stock positions. Screener／社群選股腳本已移除（2026-07 精簡），不當下單來源。
 *   Allowed actions only: EOD entry confirmation, add-on at 10MA (non `force_exit`), trailing take-profit, hard stop at 5-day low, and priority liquidation of error strategies / `gradual_exit`（如 00687B）.
 *   Individual stocks are **residual / exit-only** satellites; do not expand the stock pool.
 
@@ -198,6 +198,6 @@ To avoid non-essential drawdowns during high-volatility regimes and prevent pani
 *   `reports/latest/CURRENT_STATE.md` — synced digest（決策優先）
 *   `reports/latest/levels.json` / `holdings.json` — generated; `sync_runtime_state` + `refresh_levels_live`
 *   `reports/latest/eod_action_list.md` / `exit_watch_1310.md` — EOD／出清倉
-*   `reports/latest/strategy_cp_ranking.md` + `strategy_cp_best.json` — CP（少跑回測產出）
+*   `reports/latest/backtest/strategy_cp_ranking.md` + `strategy_cp_best.json` — CP（少跑回測產出）
 
 

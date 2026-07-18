@@ -3,7 +3,6 @@ import os
 import json
 import urllib.request
 import xml.etree.ElementTree as ET
-import ctypes
 import sys
 import shutil
 from datetime import datetime
@@ -256,7 +255,16 @@ def check_twd_exchange_rate():
 
 
 def trigger_desktop_alert(message):
-    ctypes.windll.user32.MessageBoxW(0, message, "🚨 台股黑天鵝警報 🚨", 0x10 | 0x0)
+    """僅 Windows 桌面環境有效；Linux（droplet）安全 no-op。"""
+    if sys.platform != "win32":
+        print("[popup skipped] 非 Windows 環境，不彈窗。")
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.user32.MessageBoxW(0, message, "🚨 台股黑天鵝警報 🚨", 0x10 | 0x0)
+    except Exception as e:
+        print(f"[popup failed] {e}")
 
 
 def check_stop_level_breaches(
@@ -305,16 +313,6 @@ def check_stop_level_breaches(
                     f"盤中 {px:.2f} ≤ 停損 {stop:.2f} → 改約 13:10 收盤確認"
                 )
     return alerts
-
-
-def in_close_confirm_window(now, rules):
-    cc = rules.get("close_confirm") or {}
-    if cc.get("enabled") is False:
-        return False
-    start = str(cc.get("start_hhmm", "1305"))
-    end = str(cc.get("end_hhmm", "1325"))
-    t = now.strftime("%H%M")
-    return start <= t <= end
 
 
 def main():

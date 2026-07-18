@@ -1,0 +1,12 @@
+[Unit]
+Description=TW EOD ingest (14:00 / 14:30 / 17:30 Taipei)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 14:00:00
+OnCalendar=Mon..Fri *-*-* 14:30:00
+OnCalendar=Mon..Fri *-*-* 17:30:00
+Persistent=true
+Unit=twstockals-ingest@tw_eod.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Trading-day digest close 13:45 Taipei
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 13:45:00
+Persistent=true
+Unit=twstockals-alert@digest_close.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Close confirm backup 13:25 Taipei (dedupe via close_confirm_ran.json)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 13:25:00
+Persistent=true
+Unit=twstockals-alert@close_confirm_backup.service
+
+[Install]
+WantedBy=timers.target

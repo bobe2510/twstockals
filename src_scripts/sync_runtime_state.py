@@ -39,9 +39,23 @@ from eod_pending_ops import clear_pending, load_pending  # noqa: E402
 from tw_time import taiwan_now  # noqa: E402
 
 
-CLEARED_HINT = re.compile(
-    r"(00632R|00882|3483|5469|6191|逢彈分批出清|錯誤策略出清|反1)"
-)
+# 動態組出「已出清」提示 regex：代號來自 my_targets.cleared_positions（勿硬編碼）
+_CLEARED_PHRASES = r"逢彈分批出清|錯誤策略出清|反1"
+CLEARED_HINT: re.Pattern = re.compile(_CLEARED_PHRASES)  # 於 main() 依 targets 重建
+
+
+def _cleared_codes(targets: dict) -> list[str]:
+    return [
+        str(x.get("code"))
+        for x in (targets.get("cleared_positions") or [])
+        if x.get("code")
+    ]
+
+
+def build_cleared_hint(targets: dict) -> re.Pattern:
+    parts = [re.escape(c) for c in _cleared_codes(targets)]
+    parts.append(_CLEARED_PHRASES)
+    return re.compile("(" + "|".join(parts) + ")")
 
 
 def _load_targets() -> dict:
@@ -176,6 +190,39 @@ def scrub_levels(targets: dict, now_iso: str) -> None:
     print(f"levels.json 已 scrub｜portfolio 列對齊現持股")
 
 
+def _strategy_lines(port: list) -> list[str]:
+    """依現持股動態產生策略摘要列（勿硬編碼代號）。"""
+    try:
+        from holding_rules import is_core_etf, is_tw_stock_code
+    except Exception:
+        is_core_etf = lambda c, n="": False  # noqa: E731
+        is_tw_stock_code = lambda c: str(c)[:1].isdigit() and not str(c).startswith("00")  # noqa: E731
+
+    out: list[str] = []
+    codes = {str(h.get("code")) for h in port}
+    if "00631L" in codes:
+        out.append(
+            "* 正2 `00631L`：年線上＋Level≥3 → **續抱、禁止加碼**；**破年線**才減碼／空倉  \n"
+        )
+    for h in port:
+        if h.get("policy") == "gradual_exit":
+            out.append(
+                f"* {h.get('name')} `{h.get('code')}`：`gradual_exit` 逢彈分批，不加碼  \n"
+            )
+    stocks = [
+        str(h.get("code"))
+        for h in port
+        if is_tw_stock_code(str(h.get("code")))
+        and not is_core_etf(str(h.get("code")), h.get("name") or "")
+        and h.get("policy") != "gradual_exit"
+    ]
+    if stocks:
+        out.append(
+            f"* 個股殘倉（{'／'.join(stocks)}）：收盤確認停損／移動停利；不新開個股  \n"
+        )
+    return out
+
+
 def write_current_state(targets: dict, now) -> None:
     multi = targets.get("multi_asset") or {}
     port = targets.get("portfolio") or []
@@ -226,14 +273,16 @@ def write_current_state(targets: dict, now) -> None:
             "\n## 策略摘要（現行）\n\n",
             f"* 可再投入現金：**{cash:,}** 元（既有持倉外）  \n",
             f"* pause_us_ib：**{pause}**（true＝美股只觀測不催匯款）  \n",
-            "* 正2 `00631L`：年線上＋Level≥3 → **續抱、禁止加碼**；**破年線**才減碼／空倉  \n",
-            "* 美債 `00687B`：`gradual_exit` 逢彈分批，不加碼  \n",
-            "* 個股殘倉（2301／3484）：收盤確認停損／移動停利；不新開個股  \n",
+        ]
+    )
+    lines.extend(_strategy_lines(port))
+    lines.extend(
+        [
             "* 買點用詞：=門檻**允許買進**／較優**建議買進**／S**強烈建議買進**  \n",
-            "* 加密：偏重 → 不加碼；破 50MA 可減參考（午間 `crypto_noon` 推播）  \n\n",
+            "* 加密：偏重 → 不加碼；破 50MA 可減參考  \n\n",
             "## 過期報告處理\n\n",
             "* 已對 `levels.json`／`holdings.json`／`eod_pending_ops` 做 scrub  \n",
-            "* `portfolio_and_watchlist.md` 若仍含反1／00882 出清窗 → 頂部會被蓋上過期警告  \n",
+            "* `portfolio_and_watchlist.md` 若仍列已出清標的 → 頂部會被蓋上過期警告  \n",
         ]
     )
     with open(STATE_MD, "w", encoding="utf-8") as f:
@@ -247,16 +296,7 @@ def stamp_stale_portfolio_report(targets: dict, now) -> None:
         return
     text = open(PORTFOLIO_MD, "r", encoding="utf-8").read()
     live = {str(h.get("code")) for h in (targets.get("portfolio") or [])}
-    cleared = {
-        str(x.get("code")) for x in (targets.get("cleared_positions") or []) if x.get("code")
-    }
-    looks_stale = bool(CLEARED_HINT.search(text)) or any(
-        f"`{c}`" in text and c in cleared for c in cleared
-    )
-    # 也檢查是否把已出清當持股表
-    for c in ("00632R", "00882", "3483", "5469", "6191"):
-        if c in cleared and re.search(rf"\|\s*`{c}`\s*\|.*持有", text):
-            looks_stale = True
+    cleared = set(_cleared_codes(targets))
     banner = (
         f"> [!CAUTION]\n"
         f"> **⛔ 本報告可能過期（同步於 {now.strftime('%Y-%m-%d %H:%M')}）**  \n"
@@ -265,16 +305,14 @@ def stamp_stale_portfolio_report(targets: dict, now) -> None:
         f"> 請改看 [`CURRENT_STATE.md`](CURRENT_STATE.md) 與當日 `eod_action_list.md`。  \n"
         f"> 完整日報已封存；日常請看 CURRENT_STATE／EOD／推播。  \n\n"
     )
-    # 去掉舊 stamp 再蓋
+    # 去掉所有舊 stamp 再蓋（泛用 pattern，避免疊加）
     text = re.sub(
-        r"> \[!CAUTION\]\n> \*\*⛔ 本報告可能過期[\s\S]*?> 完整日報請重跑[\s\S]*?\n\n",
+        r"> \[!CAUTION\]\n> \*\*⛔ 本報告可能過期[\s\S]*?\n\n",
         "",
         text,
-        count=1,
     )
-    if looks_stale or True:
-        # 一律蓋章：此檔基準日常落後
-        text = banner + text
+    # 一律蓋章：此檔基準日常落後
+    text = banner + text
     with open(PORTFOLIO_MD, "w", encoding="utf-8") as f:
         f.write(text)
     print("portfolio_and_watchlist.md 已蓋過期警告")
@@ -327,17 +365,16 @@ def patch_wording_headers() -> None:
             print("multi_asset_levels.md 抬頭用詞已對齊")
 
 
-def stamp_eod_list(now) -> None:
+def stamp_eod_list(targets: dict, now) -> None:
     if not os.path.exists(EOD_MD):
         return
     t = open(EOD_MD, "r", encoding="utf-8").read()
+    cleared = _cleared_codes(targets)
     # 去掉已出清代號相關列
     lines = t.splitlines(keepends=True)
     out = []
     for ln in lines:
-        if CLEARED_HINT.search(ln) and any(
-            c in ln for c in ("00632R", "00882", "3483", "5469", "6191")
-        ):
+        if CLEARED_HINT.search(ln) and any(c in ln for c in cleared):
             continue
         out.append(ln)
     body = "".join(out)
@@ -356,16 +393,40 @@ def stamp_eod_list(now) -> None:
     print("eod_action_list.md 已剔除已出清列並戳記")
 
 
+def prune_history(days: int = 30) -> None:
+    """清掉 reports/history 超過保留天數的檔案（避免無限累積）。"""
+    import time
+
+    hist = os.path.join(WORKSPACE, "reports", "history")
+    if not os.path.isdir(hist):
+        return
+    cutoff = time.time() - days * 86400
+    removed = 0
+    for fn in os.listdir(hist):
+        path = os.path.join(hist, fn)
+        try:
+            if os.path.isfile(path) and os.path.getmtime(path) < cutoff:
+                os.remove(path)
+                removed += 1
+        except OSError:
+            continue
+    if removed:
+        print(f"reports/history 已清理 {removed} 檔（保留 {days} 天）")
+
+
 def main() -> None:
+    global CLEARED_HINT
     now = taiwan_now()
     now_iso = now.isoformat(timespec="seconds")
     targets = _load_targets()
+    CLEARED_HINT = build_cleared_hint(targets)
     sync_holdings(targets, now_iso)
     scrub_levels(targets, now_iso)
     write_current_state(targets, now)
     stamp_stale_portfolio_report(targets, now)
     patch_wording_headers()
-    stamp_eod_list(now)
+    stamp_eod_list(targets, now)
+    prune_history()
 
     clear = "--clear-pending" in sys.argv
     pend = load_pending()

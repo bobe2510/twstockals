@@ -1,0 +1,14 @@
+[Unit]
+Description=Gold/FX ingest (banking window + overnight)
+
+[Timer]
+# Banking window every 30m (10:00–15:30 Taipei)
+OnCalendar=Mon..Fri *-*-* 10..15:00:00
+OnCalendar=Mon..Fri *-*-* 10..15:30:00
+# Overnight / off-window every 2h
+OnCalendar=*-*-* 0/2:00:00
+Persistent=true
+Unit=twstockals-ingest@fx_gold.service
+
+[Install]
+WantedBy=timers.target

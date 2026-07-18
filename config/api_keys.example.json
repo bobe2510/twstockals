@@ -1,0 +1,18 @@
+{
+  "FINMIND_TOKENS": [
+    "",
+    "",
+    "",
+    ""
+  ],
+  "TIINGO_API_KEY": "",
+  "GEMINI_API_KEY": "",
+  "TELEGRAM_BOT_TOKEN": "",
+  "TELEGRAM_CHAT_ID": "",
+  "SMTP_HOST": "smtp.gmail.com",
+  "SMTP_PORT": 587,
+  "SMTP_USER": "",
+  "SMTP_PASSWORD": "",
+  "SMTP_TO": "",
+  "NOTIFY_DRY_RUN": true
+}
