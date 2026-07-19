@@ -82,21 +82,33 @@ pip install -r requirements.txt   # 若有新依賴
 
 ---
 
-## F. 單向拉取報告（本機讀 Droplet 產出）
+## F. Google Drive 雙向同步（2026-07-19 起，取代 SSH 拉取／推送）
 
-只拉 `reports/latest`（不動程式／金鑰／倉）：
+Droplet 用 rclone（`~/.local/bin/rclone`，OAuth 個人授權＋root_folder_id 鎖定 `dev/twstockals`）
+直接與 Google Drive 同步；Windows 端靠 Drive 桌面版自動收發，**不再需要本機排程**。
 
-```powershell
-.\deploy\droplet\pull_reports_latest.ps1 -HostName twstockals-do
+兩條不相交的單向同步（誰是作者誰推）：
+
+| Timer | 頻率 | 方向 | 內容 |
+|-------|------|------|------|
+| gdrive-pull | 每 10 分（:00） | Drive → Droplet | 程式＋config（排除 reports/、.git/、.venv/、快取） |
+| gdrive-push | 每 10 分（:05） | Droplet → Drive | reports/ 全部 |
+
+安裝（Droplet 上）：
+
+```bash
+cd /home/brian/twstockals && sudo bash deploy/droplet/install_gdrive_sync.sh
 ```
 
-每 30 分自動拉一次（Windows 工作排程）：
+授權失效重連（本機先開 tunnel `ssh -L 53682:localhost:53682 twstockals-do`）：
 
-```powershell
-.\deploy\droplet\register_pull_reports_task.ps1 -HostName twstockals-do -Minutes 30
+```bash
+printf 'y\ny\n' | ~/.local/bin/rclone config reconnect gdrive:
 ```
 
-取消：`Unregister-ScheduledTask -TaskName twstockals-pull-reports-latest -Confirm:$false`
+> 舊機制備援：`pull_reports_latest.ps1`／`register_pull_reports_task.ps1`（SSH 拉取）與
+> `sync_from_windows.ps1`（SSH 推送）保留可用；已註冊的 Windows 排程請取消：
+> `Unregister-ScheduledTask -TaskName twstockals-pull-reports-latest -Confirm:$false`
 
 ---
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Push reports to Google Drive every 10 min (offset :05)
+
+[Timer]
+OnCalendar=*:05/10
+RandomizedDelaySec=30
+Persistent=true
+Unit=twstockals-gdrive-push.service
+
+[Install]
+WantedBy=timers.target

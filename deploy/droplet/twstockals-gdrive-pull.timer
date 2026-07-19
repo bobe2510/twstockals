@@ -1,0 +1,11 @@
+[Unit]
+Description=Pull code/config from Google Drive every 10 min
+
+[Timer]
+OnCalendar=*:00/10
+RandomizedDelaySec=30
+Persistent=true
+Unit=twstockals-gdrive-pull.service
+
+[Install]
+WantedBy=timers.target

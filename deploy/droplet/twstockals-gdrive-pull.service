@@ -1,0 +1,17 @@
+[Unit]
+Description=twstockals Google Drive pull (code+config -> droplet)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=brian
+Group=brian
+Environment=TWSTOCKALS_WORKSPACE=/home/brian/twstockals
+Environment=TZ=Asia/Taipei
+WorkingDirectory=/home/brian/twstockals
+ExecStart=/bin/bash /home/brian/twstockals/deploy/droplet/gdrive_pull_code.sh
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
