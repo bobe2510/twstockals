@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-07-19T16:16:28+08:00",
+  "updated_at": "2026-07-20T00:00:24+08:00",
   "events": {
     "macro_level": {
       "active": true,
@@ -106,7 +106,7 @@
     "crypto_shock_BTC-USD_20260719": {
       "active": false,
       "meta": {
-        "change_pct": -0.21778622462027553,
+        "change_pct": -0.41917678657968915,
         "allowed": true,
         "below_ma50": false
       },
@@ -115,7 +115,7 @@
     "crypto_shock_ETH-USD_20260719": {
       "active": false,
       "meta": {
-        "change_pct": 0.4064189497533066,
+        "change_pct": 0.456348886777147,
         "allowed": true,
         "below_ma50": false
       },
@@ -123,8 +123,8 @@
     },
     "us_ib_window": {
       "active": true,
-      "since": "2026-07-19T16:15:29+08:00",
-      "last_change": "2026-07-19T16:15:29+08:00",
+      "since": "2026-07-20T00:00:24+08:00",
+      "last_change": "2026-07-20T00:00:24+08:00",
       "notify_clear": true,
       "meta": {
         "on": [

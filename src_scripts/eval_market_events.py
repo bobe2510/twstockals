@@ -521,6 +521,31 @@ def eval_us_ib_window(*, quiet: bool, force: bool) -> list[str]:
     )
 
     targets = _load_json(TARGETS_PATH)
+    # 具體金額：us_etf 目標配置 − 已持有，VOO/VXUS/QQQ = 45.5/19.5/35%（核心7:3、成長袖<VOO），
+    # 分 3 批×每月（2026-07-19 deploy_pacing_backtest：LS中位數最高但T3為操作折衷；>3批明確差）。
+    amounts_txt = ""
+    try:
+        from build_position_playbook import _nav_parts, _alloc_pct
+
+        nav = _nav_parts(targets)
+        _, us_tgt, us_held = _alloc_pct(nav, "us_etf", targets)
+        budget = max(us_tgt * nav["total_nav"] - us_held, 0)
+        if budget > 50_000:
+            split = {"VOO": 0.455, "VXUS": 0.195, "QQQ": 0.35}
+            rows = []
+            for s, w in split.items():
+                tot = budget * w
+                ma = gates.get(s, {}).get("bias200")
+                rows.append(f"  {s}：總額 ≈{tot:,.0f} 元｜每批 ≈{tot/3:,.0f} 元")
+            amounts_txt = (
+                f"\n\n【建議金額】（us_etf 目標 {us_tgt*100:.0f}% ≈{budget:,.0f} 元，分 3 批×每月）\n"
+                + "\n".join(rows)
+                + "\n出場＝趨勢閘門轉空（VOO/QQQ：<200MA且12月動量負；VXUS：<200MA）；"
+                "無固定停損價，EOD 確認執行。"
+            )
+    except Exception as e:
+        amounts_txt = f"\n（金額計算失敗：{e}）"
+
     pause_us = bool((targets.get("multi_asset") or {}).get("pause_us_ib"))
     pause_note = (
         "\n（目前 pause_us_ib=true：買點與匯款催促仍暫停；這是入金啟動提示，"
@@ -536,7 +561,8 @@ def eval_us_ib_window(*, quiet: bool, force: bool) -> list[str]:
         body_on=(
             f"VOO（核心錨）轉多：{detail}。\n"
             "IB 電匯通常需 1-3 個工作天到帳，建議現在啟動匯款流程；"
-            "資金到位後再依評等分批進場（VOO:VXUS≈7:3，QQQ 成長袖較小）。"
+            "資金到位後依下列金額分批進場。"
+            + amounts_txt
             + pause_note
         ),
         title_off="美股布局窗關閉",
