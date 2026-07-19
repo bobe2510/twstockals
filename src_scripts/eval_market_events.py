@@ -478,6 +478,78 @@ def eval_asset_shocks(rules: dict, *, quiet: bool, force: bool) -> list[str]:
     return results
 
 
+def eval_us_ib_window(*, quiet: bool, force: bool) -> list[str]:
+    """
+    美股布局窗（獨立於 pause_us_ib，專門回答「何時該入金 IB」）：
+    以 VOO（核心錨）站上年線或12月動量轉正為開窗訊號；VXUS/QQQ 狀態併陳參考。
+    這是入金時機提示，不是買點；買點仍走 scan_watch_grades（受 pause_us_ib 管控）。
+    2026-07-18 trend_exit_backtest：VOO/QQQ 用 200MA-or-動量；VXUS 動量無效改純200MA。
+    """
+    results = []
+    gates: dict[str, dict] = {}
+    for sym, kind in (("VOO", "mom_or_ma"), ("QQQ", "mom_or_ma"), ("VXUS", "ma_only")):
+        series = _daily_closes(sym)
+        if len(series) < 210:
+            results.append(f"us_ib_window {sym}: insufficient history")
+            continue
+        closes = [c for _, c in series]
+        px = closes[-1]
+        ma200 = _ma(closes, 200)
+        if ma200 is None:
+            continue
+        above200 = px > ma200
+        mom12 = len(closes) >= 253 and px > closes[-253]
+        gate_on = above200 if kind == "ma_only" else (above200 or mom12)
+        bias200 = (px - ma200) / ma200 * 100
+        gates[sym] = {
+            "gate_on": gate_on,
+            "above200": above200,
+            "mom12": mom12,
+            "bias200": round(bias200, 1),
+        }
+
+    if "VOO" not in gates:
+        results.append("us_ib_window: VOO data unavailable")
+        return results
+
+    voo_on = gates["VOO"]["gate_on"]
+    on_syms = [s for s, g in gates.items() if g["gate_on"]]
+    off_syms = [s for s, g in gates.items() if not g["gate_on"]]
+    detail = "；".join(
+        f"{s} {'ON' if g['gate_on'] else 'OFF'}(vs200MA{g['bias200']:+.1f}%)"
+        for s, g in gates.items()
+    )
+
+    targets = _load_json(TARGETS_PATH)
+    pause_us = bool((targets.get("multi_asset") or {}).get("pause_us_ib"))
+    pause_note = (
+        "\n（目前 pause_us_ib=true：買點與匯款催促仍暫停；這是入金啟動提示，"
+        "資金到位、確認可執行後再把設定改 false 恢復正式買點推播。）"
+        if pause_us
+        else ""
+    )
+
+    apply_desired(
+        "us_ib_window",
+        voo_on,
+        title_on="美股布局窗開啟｜建議開始入金 IB",
+        body_on=(
+            f"VOO（核心錨）轉多：{detail}。\n"
+            "IB 電匯通常需 1-3 個工作天到帳，建議現在啟動匯款流程；"
+            "資金到位後再依評等分批進場（VOO:VXUS≈7:3，QQQ 成長袖較小）。"
+            + pause_note
+        ),
+        title_off="美股布局窗關閉",
+        body_off=f"VOO 轉空：{detail}。窗口關閉，暫緩入金。",
+        notify_clear=True,
+        meta={"on": on_syms, "off": off_syms},  # 精簡：明細只在轉態推播內文，避免每日事件列雜訊
+        force_notify=force,
+        quiet=quiet,
+    )
+    results.append(f"us_ib_window: voo_on={voo_on} on={on_syms} off={off_syms}")
+    return results
+
+
 def eval_ingest(*, quiet: bool, force: bool) -> list[str]:
     rules = load_alert_rules()
     pol = _policies(rules)
@@ -543,6 +615,7 @@ def run_all(
         rules, close_confirm=close_confirm, quiet=quiet, force=force
     )
     out["shock"] = eval_asset_shocks(rules, quiet=quiet, force=force)
+    out["us_ib_window"] = eval_us_ib_window(quiet=quiet, force=force)
     if not skip_ingest:
         out["ingest"] = eval_ingest(quiet=quiet, force=force)
     for k, v in out.items():

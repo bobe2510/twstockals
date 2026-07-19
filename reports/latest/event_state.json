@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-07-19T16:03:09+08:00",
+  "updated_at": "2026-07-19T16:16:28+08:00",
   "events": {
     "macro_level": {
       "active": true,
@@ -52,9 +52,9 @@
       "active": false,
       "meta": {
         "fail_streak": 0,
-        "ok_streak": 43
+        "ok_streak": 44
       },
-      "ok_streak": 43,
+      "ok_streak": 44,
       "fail_streak": 0,
       "notify_clear": true
     },
@@ -106,7 +106,7 @@
     "crypto_shock_BTC-USD_20260719": {
       "active": false,
       "meta": {
-        "change_pct": -0.25020737505595525,
+        "change_pct": -0.21778622462027553,
         "allowed": true,
         "below_ma50": false
       },
@@ -115,11 +115,28 @@
     "crypto_shock_ETH-USD_20260719": {
       "active": false,
       "meta": {
-        "change_pct": 0.3130016482248088,
+        "change_pct": 0.4064189497533066,
         "allowed": true,
         "below_ma50": false
       },
       "notify_clear": false
+    },
+    "us_ib_window": {
+      "active": true,
+      "since": "2026-07-19T16:15:29+08:00",
+      "last_change": "2026-07-19T16:15:29+08:00",
+      "notify_clear": true,
+      "meta": {
+        "on": [
+          "VOO",
+          "QQQ",
+          "VXUS"
+        ],
+        "off": []
+      },
+      "reclaim_streak": 0,
+      "fail_streak": 0,
+      "ok_streak": 0
     }
   }
 }
