@@ -1,0 +1,18 @@
+[Unit]
+Description=twstockals quarterly backtest revalidation + rule health
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=brian
+Group=brian
+Environment=TWSTOCKALS_WORKSPACE=/home/brian/twstockals
+Environment=TZ=Asia/Taipei
+Environment=TWSTOCKALS_CLOUD=1
+WorkingDirectory=/home/brian/twstockals
+ExecStart=/bin/bash /home/brian/twstockals/deploy/droplet/quarterly_research.sh
+Nice=15
+
+[Install]
+WantedBy=multi-user.target

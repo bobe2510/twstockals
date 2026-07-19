@@ -1,0 +1,10 @@
+[Unit]
+Description=Quarterly research revalidation (Jan/Apr/Jul/Oct 6th 08:30 Taipei)
+
+[Timer]
+OnCalendar=*-01,04,07,10-06 08:30:00
+Persistent=true
+Unit=twstockals-research-quarterly.service
+
+[Install]
+WantedBy=timers.target

@@ -137,7 +137,8 @@ def build() -> dict:
     shares = float(lev.get("shares") or 0)
     close = lev.get("close") or lev.get("cost")
     pct, tgt, held_v = _alloc_pct(nav, "tw_lev_00631L", targets)
-    over = pct > tgt + 0.005 if tgt else False
+    # 帶寬 +3pp（2026-07-19 rebalance_band_backtest：窄帶寬只加摩擦，5-10%全面優於1-3%）
+    over = pct > tgt + 0.03 if tgt else False
     card = {
         "code": "00631L",
         "role": "core_tw_lev",
@@ -230,7 +231,8 @@ def build() -> dict:
         "target_pct": round(c_tgt * 100, 1),
         "today": "無動作" if sh50 else "尚未建倉（新錢走 watch_grades）",
     }
-    if c_tgt and c_pct > c_tgt + 0.02 and sh50 > 0 and px50:
+    # +5pp（rebalance_band_backtest 2026-07-19）
+    if c_tgt and c_pct > c_tgt + 0.05 and sh50 > 0 and px50:
         excess_twd = c_held - c_tgt * nav["total_nav"]
         qty, note = trim_shares(min(sh50, excess_twd / float(px50)), 1.0)
         if qty > 0 and not already_suggested_trim("0050", "rebalance", trim_state):
@@ -295,7 +297,7 @@ def build() -> dict:
     g_pol = (policy.get("products") or {}).get("GOLD") or {}
     u_pol = (policy.get("products") or {}).get("USDTWD") or {}
     gf_pct, gf_tgt, gf_held = _alloc_pct(nav, "gold_fx", targets)
-    gf_over = gf_tgt and gf_pct > gf_tgt + 0.02  # 避險袖給 2% 緩衝，少折騰
+    gf_over = gf_tgt and gf_pct > gf_tgt + 0.05  # +5pp（rebalance_band_backtest 2026-07-19）
     gold_today = f"持有約 {nav['gold']:,.0f} 元"
     if gf_over:
         excess = gf_held - gf_tgt * nav["total_nav"]
@@ -360,7 +362,8 @@ def build() -> dict:
         "target_pct": round(ctgt * 100, 1),
         "today": "達標",
     }
-    if cpct > ctgt + 0.005 and cheld > 0:
+    # 小袖用相對帶寬 ~50%目標（3%→觸發於4.5%）；絕對帶寬對小袖永不觸發
+    if cpct > ctgt + 0.015 and cheld > 0:
         excess = cheld - ctgt * nav["total_nav"]
         ccard["today"] = f"超配｜建議減約 {excess:,.0f} 元市值至≤{ctgt*100:.0f}%"
         intents.append(

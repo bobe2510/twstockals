@@ -6,6 +6,11 @@ set -euo pipefail
 RCLONE="${RCLONE:-/home/brian/.local/bin/rclone}"
 WS="${TWSTOCKALS_WORKSPACE:-/home/brian/twstockals}"
 
+# backtest 報告雙向合併（本機研究產出也要進 Droplet，供 rule health 檢查）
+"$RCLONE" copy --update gdrive:reports/latest/backtest "$WS/reports/latest/backtest" \
+  --exclude "desktop.ini" \
+  --timeout 120s --retries 3 --log-level NOTICE || true
+
 exec "$RCLONE" sync gdrive: "$WS" \
   --exclude "reports/**" \
   --exclude ".git/**" \

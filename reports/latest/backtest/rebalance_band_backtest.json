@@ -1,0 +1,169 @@
+{
+  "generated_at": "2026-07-19T19:02:11",
+  "windows": {
+    "含BTC": {
+      "永不再平衡": {
+        "cagr": 25.289,
+        "mdd": -52.58,
+        "cp": 12.144,
+        "final": 13104964.477,
+        "rebalances_yr": 0.0,
+        "trades_yr": 0.0,
+        "turnover_yr_pct": 0.0,
+        "years": 11.413
+      },
+      "帶寬 1%": {
+        "cagr": 19.95,
+        "mdd": -24.628,
+        "cp": -7.104,
+        "final": 7973023.112,
+        "rebalances_yr": 12.618,
+        "trades_yr": 69.659,
+        "turnover_yr_pct": 128.137,
+        "years": 11.413
+      },
+      "帶寬 2%": {
+        "cagr": 20.25,
+        "mdd": -24.534,
+        "cp": 7.124,
+        "final": 8203249.945,
+        "rebalances_yr": 4.118,
+        "trades_yr": 23.307,
+        "turnover_yr_pct": 83.34,
+        "years": 11.413
+      },
+      "帶寬 3%": {
+        "cagr": 20.37,
+        "mdd": -24.714,
+        "cp": 10.511,
+        "final": 8297186.573,
+        "rebalances_yr": 2.103,
+        "trades_yr": 12.267,
+        "turnover_yr_pct": 71.151,
+        "years": 11.413
+      },
+      "帶寬 5%": {
+        "cagr": 20.425,
+        "mdd": -25.683,
+        "cp": 12.584,
+        "final": 8340391.57,
+        "rebalances_yr": 0.789,
+        "trades_yr": 4.732,
+        "turnover_yr_pct": 40.626,
+        "years": 11.413
+      },
+      "帶寬 10%": {
+        "cagr": 20.567,
+        "mdd": -25.685,
+        "cp": 13.515,
+        "final": 8453290.237,
+        "rebalances_yr": 0.35,
+        "trades_yr": 2.103,
+        "turnover_yr_pct": 26.888,
+        "years": 11.413
+      },
+      "季度日曆": {
+        "cagr": 19.706,
+        "mdd": -24.74,
+        "cp": 7.186,
+        "final": 7789400.763,
+        "rebalances_yr": 3.943,
+        "trades_yr": 21.117,
+        "turnover_yr_pct": 55.049,
+        "years": 11.413
+      },
+      "年度日曆": {
+        "cagr": 20.865,
+        "mdd": -24.539,
+        "cp": 13.047,
+        "final": 8694692.355,
+        "rebalances_yr": 0.964,
+        "trades_yr": 5.608,
+        "turnover_yr_pct": 37.309,
+        "years": 11.413
+      }
+    },
+    "長窗不含BTC": {
+      "永不再平衡": {
+        "cagr": 16.58,
+        "mdd": -49.967,
+        "cp": 4.088,
+        "final": 19518723.458,
+        "rebalances_yr": 0.0,
+        "trades_yr": 0.0,
+        "turnover_yr_pct": 0.0,
+        "years": 19.369
+      },
+      "帶寬 1%": {
+        "cagr": 14.203,
+        "mdd": -48.578,
+        "cp": -15.831,
+        "final": 13096480.749,
+        "rebalances_yr": 12.804,
+        "trades_yr": 59.631,
+        "turnover_yr_pct": 133.123,
+        "years": 19.369
+      },
+      "帶寬 2%": {
+        "cagr": 14.227,
+        "mdd": -48.756,
+        "cp": -3.213,
+        "final": 13149697.913,
+        "rebalances_yr": 3.614,
+        "trades_yr": 17.502,
+        "turnover_yr_pct": 79.392,
+        "years": 19.369
+      },
+      "帶寬 3%": {
+        "cagr": 14.299,
+        "mdd": -47.618,
+        "cp": -0.27,
+        "final": 13311175.268,
+        "rebalances_yr": 1.807,
+        "trades_yr": 8.88,
+        "turnover_yr_pct": 56.641,
+        "years": 19.369
+      },
+      "帶寬 5%": {
+        "cagr": 14.589,
+        "mdd": -48.403,
+        "cp": 1.172,
+        "final": 13982059.341,
+        "rebalances_yr": 0.878,
+        "trades_yr": 4.388,
+        "turnover_yr_pct": 56.046,
+        "years": 19.369
+      },
+      "帶寬 10%": {
+        "cagr": 14.668,
+        "mdd": -49.967,
+        "cp": 1.712,
+        "final": 14170188.04,
+        "rebalances_yr": 0.31,
+        "trades_yr": 1.549,
+        "turnover_yr_pct": 35.763,
+        "years": 19.369
+      },
+      "季度日曆": {
+        "cagr": 14.396,
+        "mdd": -46.988,
+        "cp": -2.85,
+        "final": 13531336.102,
+        "rebalances_yr": 3.975,
+        "trades_yr": 18.328,
+        "turnover_yr_pct": 69.217,
+        "years": 19.369
+      },
+      "年度日曆": {
+        "cagr": 13.896,
+        "mdd": -46.982,
+        "cp": 0.71,
+        "final": 12430940.32,
+        "rebalances_yr": 0.981,
+        "trades_yr": 4.801,
+        "turnover_yr_pct": 30.888,
+        "years": 19.369
+      }
+    }
+  }
+}
