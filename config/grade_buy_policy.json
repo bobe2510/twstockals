@@ -68,10 +68,11 @@
         "D": 0,
         "C": 0,
         "B": 0,
-        "A": 0,
-        "S": 0
+        "A": 30000,
+        "S": 60000
       },
       "pause_add_default": true,
+      "pause_note": "暫停＝動態判定：crypto 占比 > allocation_targets.crypto(3%)+0.5% 即暫停；占比回落自動開放（scan_multi_asset 依 nav 計算）。金額僅開放時適用。",
       "sell_rule": "trend_200ma_or_mom12",
       "sell_note": "趨勢複合出場：價<200MA「且」12月動量<0 → 全減；任一為多則持有。2026-07-18 trend_exit_backtest：G複合 OOS(2022~) +23.7%/-32% vs B&H +4.7%/-67%；破50MA出場已停用（全期少賺17%/年）。",
       "push_windows": [
@@ -86,10 +87,11 @@
         "D": 0,
         "C": 0,
         "B": 0,
-        "A": 0,
-        "S": 0
+        "A": 15000,
+        "S": 30000
       },
       "pause_add_default": true,
+      "pause_note": "同 BTC：占比 ≤ 目標 3% 時自動開放，金額僅開放時適用。",
       "sell_rule": "trend_200ma",
       "sell_note": "純200MA趨勢開關：價<200MA → 全減；站回再持有。2026-07-18 trend_exit_backtest：ETH 200MA全期 +25.7%/-74% vs B&H +12.6%/-82%，OOS +5.0%/-46% vs -10.5%/-74%；破50MA出場已停用。",
       "push_windows": [

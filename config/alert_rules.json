@@ -66,7 +66,7 @@
     },
     "take_profit_roi_partial": {
       "urgency": "eod_action",
-      "description": "相對成本達標→分批停利（先把利潤落袋，剩餘續抱用移動停利）"
+      "description": "（未接線：allow_roi_tp 從未設定，達標停利實際未啟用過）相對成本達標→分批停利"
     },
     "entry_ma5": {
       "urgency": "eod_action",
@@ -74,7 +74,7 @@
     },
     "add_ma10": {
       "urgency": "eod_action",
-      "description": "已持有回測10MA主力加碼"
+      "description": "（未接線／由 watch_grades 評等 取代）已持有回測10MA主力加碼"
     },
     "macro_level": {
       "urgency": "emergency",
@@ -90,11 +90,11 @@
     },
     "timing_flip_200ma": {
       "urgency": "eod_action",
-      "description": "年線多空擇時翻轉"
+      "description": "（未接線／由 macro_level／crypto_sell_zone 取代）年線多空擇時翻轉"
     },
     "gold_buy_zone": {
       "urgency": "eod_action",
-      "description": "黃金存摺進入季線換算買點區"
+      "description": "（未接線／由 gold_buy_grade_* 取代）黃金存摺進入季線換算買點區"
     },
     "gold_buy_grade_b": {
       "urgency": "eod_action",
@@ -114,11 +114,11 @@
     },
     "gold_add_zone": {
       "urgency": "eod_action",
-      "description": "黃金存摺接近年線換算加碼區"
+      "description": "（未接線／由 gold_buy_grade_* 取代）黃金存摺接近年線換算加碼區"
     },
     "btc_buy_zone": {
       "urgency": "eod_action",
-      "description": "BTC 回測50MA衛星倉小買區（若未偏重）"
+      "description": "（未接線／由 crypto 加碼閘門（scan_multi_asset 動態占比） 取代）BTC 回測50MA衛星倉小買區（若未偏重）"
     },
     "crypto_sell_zone": {
       "urgency": "eod_action",
@@ -138,7 +138,7 @@
     },
     "us_etf_buy_zone": {
       "urgency": "eod_action",
-      "description": "美股ETF年線下試倉區"
+      "description": "（未接線／由 watch_grades 評等＋趨勢閘門 取代）美股ETF年線下試倉區"
     },
     "us_ib_go": {
       "urgency": "eod_action",
@@ -149,7 +149,7 @@
     "taiex_alert_pct": -1.5,
     "portfolio_alert_pct": -4.0,
     "tracked_alert_pct": -7.0,
-    "twd_alert_pct": 0.40,
+    "twd_alert_pct": 0.4,
     "us_alert_pct": -3.0,
     "gold_alert_pct": -5.0,
     "crypto_alert_pct": -8.0,

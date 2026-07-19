@@ -113,7 +113,10 @@ def _alloc_pct(nav: dict, key: str, targets: dict) -> tuple[float, float, float]
     elif key == "crypto":
         held = nav["crypto"]
     elif key == "us_etf":
-        held = 0.0
+        held = sum(
+            float(x.get("approx_twd") or 0)
+            for x in ((targets.get("multi_asset") or {}).get("us_etf") or [])
+        )
     else:
         held = 0.0
     held = float(held)
@@ -211,6 +214,44 @@ def build() -> dict:
         )
     cards.append(card)
 
+    # —— 0050 底倉（純長抱；唯一減碼路徑＝超配再平衡） ——
+    p0050 = nav["port"].get("0050") or {}
+    sh50 = float(p0050.get("shares") or 0)
+    px50 = p0050.get("close") or p0050.get("cost")
+    c_pct, c_tgt, c_held = _alloc_pct(nav, "tw_core_0050", targets)
+    card50 = {
+        "code": "0050",
+        "role": "core_tw",
+        "entry": "≥B 分批（flat）",
+        "add": "評等升級不加碼；新錢依 watch_grades",
+        "tp": "無（純長抱 B方案）；僅超配再平衡",
+        "sl": "無（exit_rule_backtest 2026-07-18）",
+        "held_pct": round(c_pct * 100, 1),
+        "target_pct": round(c_tgt * 100, 1),
+        "today": "無動作" if sh50 else "尚未建倉（新錢走 watch_grades）",
+    }
+    if c_tgt and c_pct > c_tgt + 0.02 and sh50 > 0 and px50:
+        excess_twd = c_held - c_tgt * nav["total_nav"]
+        qty, note = trim_shares(min(sh50, excess_twd / float(px50)), 1.0)
+        if qty > 0 and not already_suggested_trim("0050", "rebalance", trim_state):
+            intents.append(
+                make_intent(
+                    code="0050",
+                    venue="TW",
+                    side="sell",
+                    action="rebalance_trim",
+                    qty=qty,
+                    unit="股",
+                    twd=qty * float(px50),
+                    limit_ref=f"超配 {c_pct*100:.1f}%>目標{c_tgt*100:.0f}%",
+                    rationale=f"0050 超配再平衡（純長抱唯一減碼路徑）｜{note}",
+                    priority=30,
+                )
+            )
+            mark_trim_suggested("0050", "rebalance", qty, trim_state)
+            card50["today"] = f"再平衡建議賣 {qty} 股"
+    cards.append(card50)
+
     # —— 美債出清 ——
     bond = nav["port"].get("00687B") or {}
     bsh = float(bond.get("shares") or 0)
@@ -250,9 +291,35 @@ def build() -> dict:
             }
         )
 
-    # —— 黃金／美金 ——
+    # —— 黃金／美金（gold_fx 合計超配檢查：長抱唯一的減碼路徑） ——
     g_pol = (policy.get("products") or {}).get("GOLD") or {}
     u_pol = (policy.get("products") or {}).get("USDTWD") or {}
+    gf_pct, gf_tgt, gf_held = _alloc_pct(nav, "gold_fx", targets)
+    gf_over = gf_tgt and gf_pct > gf_tgt + 0.02  # 避險袖給 2% 緩衝，少折騰
+    gold_today = f"持有約 {nav['gold']:,.0f} 元"
+    if gf_over:
+        excess = gf_held - gf_tgt * nav["total_nav"]
+        heavier = "GOLD" if nav["gold"] >= nav["usd"] else "USDTWD"
+        gold_today = (
+            f"gold_fx 合計超配 {gf_pct*100:.1f}%>{gf_tgt*100:.0f}%｜"
+            f"建議減較重一腿（{heavier}）約 {excess:,.0f} 元"
+        )
+        if not already_suggested_trim(heavier, "rebalance", trim_state):
+            intents.append(
+                make_intent(
+                    code=heavier,
+                    venue="BOT",
+                    side="sell",
+                    action="rebalance_trim",
+                    qty=None,
+                    unit="",
+                    twd=excess,
+                    limit_ref=f"gold_fx {gf_pct*100:.1f}%>目標{gf_tgt*100:.0f}%",
+                    rationale="避險袖超配再平衡（長抱策略唯一減碼路徑）",
+                    priority=30,
+                )
+            )
+            mark_trim_suggested(heavier, "rebalance", 0, trim_state)
     cards.append(
         {
             "code": "GOLD",
@@ -262,8 +329,8 @@ def build() -> dict:
             "tp": "僅超配再平衡；50MA停利已停用",
             "sl": "未過gate＝不加（非硬停損）",
             "held_pct": round(nav["gold"] / nav["total_nav"] * 100, 1),
-            "target_pct": "gold_fx合計",
-            "today": f"持有約 {nav['gold']:,.0f} 元",
+            "target_pct": round(gf_tgt * 100, 1),
+            "today": gold_today,
         }
     )
     cards.append(

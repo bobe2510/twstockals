@@ -174,6 +174,19 @@ def build_body(slot: str) -> tuple[str, str]:
         lines.append("")
         lines.append("【早報】開盤 09:00–09:30 凍結恐慌單；隔夜事件見上。")
     if slot == "pm":
+        # 塵埃倉提醒（dust_rule）：核心幣／穩定幣之外的小幣，隨時可清、無需等訊號
+        core_syms = {"BTC-USD", "ETH-USD", "USDT-USD"}
+        dust = [
+            c.get("name") or c.get("symbol")
+            for c in (targets.get("multi_asset") or {}).get("crypto") or []
+            if c.get("symbol") not in core_syms and float(c.get("qty") or 0) > 0
+        ]
+        if dust:
+            lines.append("")
+            lines.append(
+                f"【塵埃倉】小幣未清：{('、'.join(str(d) for d in dust[:8]))}"
+                "｜手續費划算時一次換 USDT（隨時可執行，不用等訊號）"
+            )
         lines.append("")
         lines.append("【晚報】含美股／加密視窗收斂；明日待辦以上方為準。")
 

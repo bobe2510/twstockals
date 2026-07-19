@@ -1,6 +1,6 @@
-# 晚報現況 07/18 19:00
+# 晚報現況 07/19 16:03
 
-時點 2026-07-18 19:00（台北）｜slot=pm
+時點 2026-07-19 16:03（台北）｜slot=pm
 資料 as_of：2026-07-18｜大盤 Level：**3**
 
 【部位】
@@ -25,5 +25,7 @@
 • 00631L gate_blocked
 • CRYPTO rebalance_trim
 • CASH lower_deploy_budget
+
+【塵埃倉】小幣未清：USDC、PEPE、BNB、Polygon POL、SXT、NOT、CGPT｜手續費划算時一次換 USDT（隨時可執行，不用等訊號）
 
 【晚報】含美股／加密視窗收斂；明日待辦以上方為準。

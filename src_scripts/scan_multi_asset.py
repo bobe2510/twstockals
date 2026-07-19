@@ -386,14 +386,23 @@ def main():
     cash = int(multi.get("deployable_cash_twd") or 2_000_000)
     pause_us = bool(multi.get("pause_us_ib"))
 
+    # 幣加碼閘門：實際占比 vs allocation_targets.crypto，≤目標即自動開放；
+    # 算不出（nav 資料缺）時保守維持暫停。取代原本寫死的 True。
     pause_crypto_add = True
-    crypto_approx = None
-    for c in multi.get("crypto") or []:
-        if c.get("approx_twd_total_crypto"):
-            crypto_approx = c["approx_twd_total_crypto"]
-            break
-    if crypto_approx and crypto_approx >= 250000:
-        pause_crypto_add = True
+    crypto_pct_txt = "占比不可得，保守暫停"
+    try:
+        from build_position_playbook import _nav_parts
+
+        nav = _nav_parts(targets)
+        ctgt = float((targets.get("allocation_targets") or {}).get("crypto") or 0.03)
+        cheld = float(nav.get("crypto") or 0)
+        total = float(nav.get("total_nav") or 0)
+        if total > 0:
+            cpct = cheld / total
+            pause_crypto_add = cpct > ctgt + 0.005
+            crypto_pct_txt = f"占比 {cpct*100:.1f}%／目標 {ctgt*100:.0f}%"
+    except Exception as e:
+        print(f"[crypto-gate] nav unavailable: {e}")
 
     gold = fetch_yahoo_history("GC=F")
     usdtwd = fetch_yahoo_history("USDTWD=X", "1y")
@@ -676,7 +685,7 @@ def main():
             ("VXUS", "Vanguard International ex-US"),
             ("QQQ", "Nasdaq100"),
         ]:
-            q = fetch_yahoo_history(sym, "1y")
+            q = fetch_yahoo_history(sym, "2y")  # 2y 才夠算 12 月動量
             if not q:
                 continue
             bias200 = (
@@ -692,6 +701,17 @@ def main():
                 lines.append(f"｜vs200MA {bias200:+.1f}%")
             if bias50 is not None:
                 lines.append(f"｜vs50MA {bias50:+.1f}%")
+            # 趨勢閘門（2026-07-18 trend_exit_backtest）：VOO/QQQ=200MA或12月動量；VXUS=純200MA
+            us_closes = q.get("closes") or []
+            mom12 = len(us_closes) >= 253 and us_closes[-1] > us_closes[-253]
+            above200_us = bool(q.get("ma200") and q["price"] > q["ma200"])
+            if sym == "VXUS":
+                gate_on, gate_rule = above200_us, "200MA"
+            else:
+                gate_on, gate_rule = (above200_us or mom12), "200MA或動量"
+            lines.append(
+                f"｜閘門({gate_rule})：{'**ON 可持有**' if gate_on else '**OFF 出場／不進**'}"
+            )
             lines.append("  \n")
             if q["change_pct"] <= us_etf_th:
                 title = f"{sym} 急跌觀測"
@@ -715,7 +735,7 @@ def main():
                 and -3.0 <= bias50 <= 1.5
             ):
                 us_ib_notes.append(f"{sym} 年線上＋回測季線（乖離 {bias50:+.1f}%）")
-            # 買點一律走觀測評等門檻（VOO/VXUS≥S、QQQ≥B），此處不再另推「試倉」
+            # 買點一律走觀測評等門檻（依 grade_buy_policy 動態，現行皆 B+），此處不再另推「試倉」
 
         if us_ib_notes:
             tag = "僅觀測，暫停推播" if pause_us else "詳見晚間觀測評等推播"
@@ -732,7 +752,14 @@ def main():
             bias200 = (btc["price"] - btc["ma200"]) / btc["ma200"] * 100
             lines.append(f"* 200MA：{btc['ma200']:,.2f}（乖離 {bias200:+.2f}%）  \n")
         if pause_crypto_add:
-            lines.append("* **加碼：暫停**（既有部位已偏高）。建議金額 **0**。  \n")
+            lines.append(f"* **加碼：暫停**（{crypto_pct_txt}）。建議金額 **0**。  \n")
+        else:
+            bpol = product_policy("BTC-USD", policy)
+            amts = bpol.get("suggest_twd") or {}
+            lines.append(
+                f"* **加碼：開放**（{crypto_pct_txt}）｜評等 A 約 {int(amts.get('A') or 0):,}"
+                f"／S 約 {int(amts.get('S') or 0):,} 元（門檻≥{bpol.get('buy_min_grade','A')}）  \n"
+            )
         # 趨勢複合出場（2026-07-18 trend_exit_backtest）：破年線「且」12月動量轉負才減
         btc_closes = btc.get("closes") or []
         btc_mom_ok = len(btc_closes) >= 253 and btc_closes[-1] > btc_closes[-253]
@@ -772,7 +799,14 @@ def main():
             bias200 = (eth["price"] - eth["ma200"]) / eth["ma200"] * 100
             lines.append(f"* 200MA：{eth['ma200']:,.2f}（乖離 {bias200:+.2f}%）  \n")
         if pause_crypto_add:
-            lines.append("* **加碼：暫停**（既有部位已偏高）。建議金額 **0**。  \n")
+            lines.append(f"* **加碼：暫停**（{crypto_pct_txt}）。建議金額 **0**。  \n")
+        else:
+            epol = product_policy("ETH-USD", policy)
+            eamts = epol.get("suggest_twd") or {}
+            lines.append(
+                f"* **加碼：開放**（{crypto_pct_txt}）｜評等 A 約 {int(eamts.get('A') or 0):,}"
+                f"／S 約 {int(eamts.get('S') or 0):,} 元（門檻≥{epol.get('buy_min_grade','A')}）  \n"
+            )
         # 純 200MA 趨勢開關（2026-07-18 trend_exit_backtest：ETH 動量無增益，年線最穩）
         if eth.get("ma200") and eth["price"] < eth["ma200"]:
             sell_note = product_policy("ETH-USD", policy).get("sell_note") or (

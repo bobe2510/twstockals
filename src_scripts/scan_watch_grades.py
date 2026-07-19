@@ -315,7 +315,7 @@ def grade_growth_us(s: dict, name: str, cash_cap: int, pause_ib: bool) -> dict:
 def us_ib_go_signal(s: dict, g: dict, *, code: str, policy: Optional[dict] = None) -> tuple[bool, str]:
     """
     美股「可開始布局／匯款 IB」窗（僅 pause_us_ib=false 時才推播）。
-    必須達該商品 buy_min_grade（VOO/VXUS≥S、QQQ≥B），避免低於門檻仍催匯款。
+    必須達該商品 buy_min_grade（依 grade_buy_policy 動態，現行皆 B+），避免低於門檻仍催匯款。
     """
     grade = str(g.get("grade") or "")
     if not grade or not meets_buy_min(grade, code, policy):
