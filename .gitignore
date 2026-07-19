@@ -20,3 +20,7 @@ reports/archive/
 .env
 *.pem
 config/*secrets*
+
+# Service-account keys and Google Drive artifacts
+config/twstockals-sync-*.json
+desktop.ini
