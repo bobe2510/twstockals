@@ -238,6 +238,10 @@
     },
     "ib_cash_usd": 0,
     "ib_cash_note": "IB 帳戶美元現金（已匯入未買進的部分）。匯款到帳後填入；買進後遞減。屬 gold_fx／美金袖曝險，非 us_etf。",
+    "ib_wire_in_transit_usd": 0,
+    "ib_wire_in_transit_note": "電匯在途（已離開台銀、尚未進 IB，通常1-3個工作天）。送出當日填入並把 forex_usd 歸零；到帳日改填 ib_cash_usd 並歸零本欄。兩者都計入美金袖 NAV，避免在途期間淨值短少。",
+    "usdtwd_rate_hint": 32.4,
+    "usdtwd_rate_hint_note": "IB 美元現金／在途換算台幣用的匯率近似值；精確市值以對帳為準。",
     "us_etf_plan": {
       "status": "watch_until_ib_go",
       "pause_ib": true,

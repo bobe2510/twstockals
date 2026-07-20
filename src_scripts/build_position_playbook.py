@@ -46,7 +46,12 @@ def _nav_parts(targets: dict) -> dict:
     """粗估各袖口 TWD 市值。"""
     multi = targets.get("multi_asset") or {}
     gold = (multi.get("gold_passbook") or {}).get("approx_twd") or 0
-    usd = (multi.get("forex_usd") or {}).get("approx_twd") or 0
+    # 美金袖＝台銀存摺＋IB 未動用現金＋電匯在途（1-3個工作天）。
+    # 少算任一項會讓 NAV 短少、各袖占比失真（2026-07-20 匯 IB 前補上）。
+    fx_rate = float(multi.get("usdtwd_rate_hint") or 32.4)
+    usd = float((multi.get("forex_usd") or {}).get("approx_twd") or 0)
+    usd += float(multi.get("ib_cash_usd") or 0) * fx_rate
+    usd += float(multi.get("ib_wire_in_transit_usd") or 0) * fx_rate
     crypto = 0
     for c in multi.get("crypto") or []:
         if c.get("approx_twd_total_crypto"):
