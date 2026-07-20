@@ -268,7 +268,8 @@
       "dust_rule": "塵埃倉（PEPE/SXT/NOT/CGPT/BNB零頭/POL/USDC零頭）：合計不足萬元、不設停損；手續費可行時一次性換 USDT 清倉，禁止加碼"
     },
     "total_cash_twd": 6631414,
-    "deployable_cash_twd": 2631414,
+    "deployable_cash_twd": 994712,
+    "deployable_auto_note": "[auto 2026-07-20 16:00] Level3：2,631,414→994,712（總現金 6,631,414×15%，地板 3,315,707）",
     "cash_note": "總現金水位另計；既有持股／存摺已投資。deployable_cash_twd＝可再投入新增現金。2026-07-20 進帳合計 +771,631（2301停損淨193,639｜3484停損淨233,462｜00687B減碼淨28,030｜加密回台316,500）→ 約263.14萬。其中約25%為機會準備金（USDTWD／VOO／VXUS），其餘常態池。新錢只進 approved_universe.buy_allowed。註：台股賣出淨額已扣手續費0.1425%＋證交稅（個股0.3%、債券ETF免徵），與券商對帳單如有零頭差異以對帳單為準。",
     "pause_us_ib": true
   },

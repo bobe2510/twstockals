@@ -414,12 +414,100 @@ def prune_history(days: int = 30) -> None:
         print(f"reports/history 已清理 {removed} 檔（保留 {days} 天）")
 
 
+def auto_adjust_deployable(targets: dict, now) -> None:
+    """
+    依大盤 Level 自動調整 deployable_cash_twd（可再投入上限）。
+
+    真值來源＝使用者回報的 total_cash_twd（本函式不會修改它）。
+    目標＝min(total_cash × ratio(level), total_cash − 地板)；ratio/地板見
+    position_playbook.capital_deployment。變動未達 step_twd 則不動（避免頻繁改設定）。
+    採針對性字串替換寫回，保留原檔排版；每次調整寫入稽核欄位與 log。
+    """
+    try:
+        from qty_suggest import load_playbook, suggest_deployable
+    except Exception as e:
+        print(f"[deploy-auto] 略過（載入失敗 {e}）")
+        return
+
+    multi = targets.get("multi_asset") or {}
+    total_cash = float(multi.get("total_cash_twd") or 0)
+    now_dep = float(multi.get("deployable_cash_twd") or 0)
+    if total_cash <= 0:
+        print("[deploy-auto] 略過（無 total_cash_twd）")
+        return
+
+    levels_path = os.path.join(WORKSPACE, "reports", "latest", "levels.json")
+    try:
+        with open(levels_path, "r", encoding="utf-8") as f:
+            levels_doc = json.load(f)
+    except Exception:
+        levels_doc = {}
+    macro = levels_doc.get("macro_level")
+    if macro is None:
+        print("[deploy-auto] 略過（macro_level 未知，不臆測）")
+        return
+
+    dep = suggest_deployable(
+        total_liquid=total_cash,
+        deployable_now=now_dep,
+        macro_level=int(macro),
+        playbook=load_playbook(),
+    )
+    if not dep.get("action"):
+        print(f"[deploy-auto] 維持 {now_dep:,.0f}（Level{macro} 目標 {dep['target_deployable']:,.0f}，未達調整門檻）")
+        return
+
+    target = int(dep["target_deployable"])
+    path = os.path.join(WORKSPACE, "config", "my_targets.json")
+    with open(path, "r", encoding="utf-8") as f:
+        raw = f.read()
+    pat = re.compile(r'("deployable_cash_twd"\s*:\s*)(\d+)')
+    if not pat.search(raw):
+        print("[deploy-auto] 找不到 deployable_cash_twd 欄位，未變更")
+        return
+    new_raw = pat.sub(lambda m: f"{m.group(1)}{target}", raw, count=1)
+
+    stamp = now.strftime("%Y-%m-%d %H:%M")
+    note = (
+        f"[auto {stamp}] Level{macro}：{now_dep:,.0f}→{target:,.0f}"
+        f"（總現金 {total_cash:,.0f}×{dep['ratio']:.0%}，地板 {dep['cash_floor']:,.0f}）"
+    )
+    apat = re.compile(r'("deployable_auto_note"\s*:\s*")([^"]*)(")')
+    if apat.search(new_raw):
+        new_raw = apat.sub(lambda m: f"{m.group(1)}{note}{m.group(3)}", new_raw, count=1)
+    else:
+        new_raw = pat.sub(
+            lambda m: f'{m.group(1)}{target},\n    "deployable_auto_note": "{note}"',
+            new_raw,
+            count=1,
+        )
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(new_raw)
+    multi["deployable_cash_twd"] = target  # 讓同一輪後續步驟用新值
+
+    log_path = os.path.join(WORKSPACE, "reports", "latest", "deployable_auto_log.jsonl")
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(json.dumps({
+            "ts": now.isoformat(timespec="seconds"),
+            "macro_level": int(macro),
+            "total_cash_twd": total_cash,
+            "from": now_dep,
+            "to": target,
+            "ratio": dep["ratio"],
+            "cash_floor": dep["cash_floor"],
+        }, ensure_ascii=False) + "\n")
+    print(f"[deploy-auto] {note}")
+
+
 def main() -> None:
     global CLEARED_HINT
     now = taiwan_now()
     now_iso = now.isoformat(timespec="seconds")
     targets = _load_targets()
     CLEARED_HINT = build_cleared_hint(targets)
+    auto_adjust_deployable(targets, now)  # 先調上限，後續報告才用新值
     sync_holdings(targets, now_iso)
     scrub_levels(targets, now_iso)
     write_current_state(targets, now)

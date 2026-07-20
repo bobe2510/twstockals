@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-07-20T13:45:16+08:00",
+  "updated_at": "2026-07-20T15:47:45+08:00",
   "events": {
     "macro_level": {
       "active": true,
@@ -52,9 +52,9 @@
       "active": false,
       "meta": {
         "fail_streak": 0,
-        "ok_streak": 51
+        "ok_streak": 56
       },
-      "ok_streak": 51,
+      "ok_streak": 56,
       "fail_streak": 0,
       "notify_clear": true
     },
@@ -127,8 +127,8 @@
     },
     "us_ib_window": {
       "active": true,
-      "since": "2026-07-20T10:24:48+08:00",
-      "last_change": "2026-07-20T10:24:48+08:00",
+      "since": "2026-07-20T15:41:58+08:00",
+      "last_change": "2026-07-20T15:41:58+08:00",
       "notify_clear": true,
       "meta": {
         "on": [
@@ -136,29 +136,31 @@
           "QQQ",
           "VXUS"
         ],
-        "off": []
+        "off": [],
+        "wire_twd": 610811
       },
       "reclaim_streak": 0,
       "fail_streak": 0,
       "ok_streak": 0
     },
     "fx_twd_shock_20260720": {
-      "active": true,
+      "active": false,
       "since": "2026-07-20T13:10:12+08:00",
-      "last_change": "2026-07-20T13:10:12+08:00",
+      "last_change": "2026-07-20T15:40:38+08:00",
       "notify_clear": false,
       "meta": {
-        "change_pct": 0.4515781885630288,
-        "price": 32.40999984741211
+        "change_pct": 0.11683760955594202,
+        "price": 32.301998138427734
       },
       "reclaim_streak": 0,
       "fail_streak": 0,
-      "ok_streak": 0
+      "ok_streak": 0,
+      "cleared_at": "2026-07-20T15:40:38+08:00"
     },
     "gold_shock_GC_F_20260720": {
       "active": false,
       "meta": {
-        "change_pct": 0.039875836113356655,
+        "change_pct": 0.2018615335015017,
         "allowed": true,
         "below_ma50": true
       },
@@ -167,8 +169,8 @@
     "crypto_shock_BTC-USD_20260720": {
       "active": false,
       "meta": {
-        "change_pct": -0.8413297747585258,
-        "allowed": true,
+        "change_pct": -0.8175668013029158,
+        "allowed": false,
         "below_ma50": false
       },
       "notify_clear": false
@@ -176,11 +178,20 @@
     "crypto_shock_ETH-USD_20260720": {
       "active": false,
       "meta": {
-        "change_pct": -0.7953082687490398,
-        "allowed": true,
+        "change_pct": -0.5512143272995318,
+        "allowed": false,
         "below_ma50": false
       },
       "notify_clear": false
+    },
+    "bond_time_floor_00687B": {
+      "active": false,
+      "meta": {
+        "shares": 3000.0,
+        "last_exit": "2026-07-20",
+        "suggest_shares": 1000
+      },
+      "notify_clear": true
     }
   }
 }
