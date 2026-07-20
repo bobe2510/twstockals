@@ -529,7 +529,15 @@ def eval_us_ib_window(*, quiet: bool, force: bool) -> list[str]:
 
         nav = _nav_parts(targets)
         _, us_tgt, us_held = _alloc_pct(nav, "us_etf", targets)
-        budget = max(us_tgt * nav["total_nav"] - us_held, 0)
+        gap_us = max(us_tgt * nav["total_nav"] - us_held, 0)
+        # 本次可匯額 = deployable × (美股缺口 / 全部低配袖缺口)——
+        # 長期目標靠未來新資金養，不能讓美股獨吞現有可動用資金
+        deployable = float((targets.get("multi_asset") or {}).get("deployable_cash_twd") or 0)
+        total_gap = 0.0
+        for key in ("tw_core_0050", "tw_lev_00631L", "gold_fx", "us_etf"):
+            _, t, h = _alloc_pct(nav, key, targets)
+            total_gap += max(t * nav["total_nav"] - h, 0)
+        budget = min(gap_us, deployable * gap_us / total_gap) if total_gap > 0 else 0
         if budget > 50_000:
             split = {"VOO": 0.455, "VXUS": 0.195, "QQQ": 0.35}
             rows = []
@@ -538,7 +546,9 @@ def eval_us_ib_window(*, quiet: bool, force: bool) -> list[str]:
                 ma = gates.get(s, {}).get("bias200")
                 rows.append(f"  {s}：總額 ≈{tot:,.0f} 元｜每批 ≈{tot/3:,.0f} 元")
             amounts_txt = (
-                f"\n\n【建議金額】（us_etf 目標 {us_tgt*100:.0f}% ≈{budget:,.0f} 元，分 3 批×每月）\n"
+                f"\n\n【建議金額】本次匯款 ≈{budget:,.0f} 元（可動用 {deployable:,.0f} 依各袖缺口比例分配；"
+                f"美股長期目標 {us_tgt*100:.0f}%≈{gap_us:,.0f} 元靠未來資金逐步到位）\n"
+                f"分 3 批×每月：\n"
                 + "\n".join(rows)
                 + "\n出場＝趨勢閘門轉空（VOO/QQQ：<200MA且12月動量負；VXUS：<200MA）；"
                 "無固定停損價，EOD 確認執行。"

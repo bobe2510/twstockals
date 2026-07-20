@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-07-20T00:00:24+08:00",
+  "updated_at": "2026-07-20T10:24:27+08:00",
   "events": {
     "macro_level": {
       "active": true,
@@ -52,9 +52,9 @@
       "active": false,
       "meta": {
         "fail_streak": 0,
-        "ok_streak": 44
+        "ok_streak": 46
       },
-      "ok_streak": 44,
+      "ok_streak": 46,
       "fail_streak": 0,
       "notify_clear": true
     },
@@ -123,8 +123,8 @@
     },
     "us_ib_window": {
       "active": true,
-      "since": "2026-07-20T00:00:24+08:00",
-      "last_change": "2026-07-20T00:00:24+08:00",
+      "since": "2026-07-20T10:24:27+08:00",
+      "last_change": "2026-07-20T10:24:27+08:00",
       "notify_clear": true,
       "meta": {
         "on": [
@@ -137,6 +137,41 @@
       "reclaim_streak": 0,
       "fail_streak": 0,
       "ok_streak": 0
+    },
+    "fx_twd_shock_20260720": {
+      "active": false,
+      "meta": {
+        "change_pct": 0.34619733307101885,
+        "price": 32.375999450683594
+      },
+      "notify_clear": false
+    },
+    "gold_shock_GC_F_20260720": {
+      "active": false,
+      "meta": {
+        "change_pct": -0.4460812560511118,
+        "allowed": true,
+        "below_ma50": true
+      },
+      "notify_clear": false
+    },
+    "crypto_shock_BTC-USD_20260720": {
+      "active": false,
+      "meta": {
+        "change_pct": -0.22861384003693974,
+        "allowed": true,
+        "below_ma50": false
+      },
+      "notify_clear": false
+    },
+    "crypto_shock_ETH-USD_20260720": {
+      "active": false,
+      "meta": {
+        "change_pct": 0.36776351463807533,
+        "allowed": true,
+        "below_ma50": false
+      },
+      "notify_clear": false
     }
   }
 }
