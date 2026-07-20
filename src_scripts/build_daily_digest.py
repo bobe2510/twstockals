@@ -126,18 +126,30 @@ def build_body(slot: str) -> tuple[str, str]:
     if deployable is not None:
         lines.append(f"• 可再投入 ≈ {_money(deployable)} TWD")
 
-    # Active events
+    # Active events（中文標籤，避免代號被漏看）
     lines.append("")
     lines.append("【進行中事件】")
+    event_labels = {
+        "macro_level": "大盤警戒",
+        "yearline_taiex_00631L": "正2/大盤破年線",
+        "us_ib_window": "★美股布局窗開啟（可入金IB，金額見開窗推播）",
+        "rule_health": "規則健康檢查失敗",
+        "ingest_pipeline": "資料管線異常",
+    }
     act = active_events()
     if not act:
         lines.append("• （無）")
     else:
         for ev in act:
-            eid = ev.get("event_id")
+            eid = str(ev.get("event_id"))
+            label = event_labels.get(eid)
+            if not label and eid.startswith("stop_"):
+                label = f"破防守：{eid[5:]}"
+            elif not label and "shock" in eid:
+                label = f"急跌警戒：{eid}"
             since = (ev.get("since") or "")[:16]
             meta = ev.get("meta") or {}
-            lines.append(f"• {eid} since {since} {meta}")
+            lines.append(f"• {label or eid} since {since} {meta}")
 
     # Actions / pending
     lines.append("")
