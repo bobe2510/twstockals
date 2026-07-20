@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-20T15:40:37",
+  "generated_at": "2026-07-20T16:31:14",
   "note": "推播≠已成交／已改設定；deployable 須人工確認後改 my_targets",
   "intents": [
     {
@@ -26,12 +26,12 @@
       "action": "lower_deploy_budget",
       "qty": null,
       "unit": "",
-      "twd": 994712.0,
-      "limit_ref": "Level3 ratio=15%",
+      "twd": 1989424.0,
+      "limit_ref": "Level3 ratio=30%",
       "urgency": "INFO",
-      "rationale": "建議可再投入上限 2,631,414→994,712元（地板3,315,707）；確認後再改設定",
+      "rationale": "建議可再投入上限 2,699,382→1,989,424元（地板3,315,707）；確認後再改設定",
       "gate_type": "conditional",
-      "reenable_when": "Level 回升或人工確認後才改 my_targets.deployable_cash_twd",
+      "reenable_when": "Level 變動時由 sync_runtime_state.auto_adjust_deployable 自動調整",
       "exec_after": "13:40或次日開／避開09:00-09:30",
       "priority": 60,
       "source": "position_playbook"
@@ -41,7 +41,7 @@
     "nav": {
       "invested": 1629197.0,
       "cash": 6631414.0,
-      "deployable": 2631414.0,
+      "deployable": 2699382.0,
       "total_nav": 8260611.0,
       "macro_level": 3
     }

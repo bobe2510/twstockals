@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-07-20T16:01:02+08:00",
+  "as_of": "2026-07-20T16:31:13+08:00",
   "portfolio": [
     {
       "code": "00631L",
@@ -86,7 +86,7 @@
   "multi_asset_summary": {
     "gold_g": 117.2,
     "usd": 16158.31,
-    "deployable_cash_twd": 994712,
+    "deployable_cash_twd": 2699382,
     "pause_us_ib": true,
     "crypto_approx_twd": 243000,
     "crypto_ledger_as_of": "2026-07-20"

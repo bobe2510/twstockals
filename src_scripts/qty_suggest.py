@@ -182,6 +182,77 @@ def suggest_deployable(
     }
 
 
+def market_level(closes: list[float]) -> Optional[int]:
+    """與 scan_watch_grades.macro_level 同公式：<20MA=3｜乖離≤1.5%=2｜否則=1。"""
+    if not closes or len(closes) < 20:
+        return None
+    px = float(closes[-1])
+    ma20 = sum(float(c) for c in closes[-20:]) / 20.0
+    if ma20 <= 0:
+        return None
+    if px < ma20:
+        return 3
+    return 2 if (px - ma20) / ma20 * 100 <= 1.5 else 1
+
+
+def suggest_deployable_by_sleeve(
+    *,
+    total_cash: float,
+    gaps_twd: dict,
+    levels: dict,
+    playbook: Optional[dict] = None,
+) -> dict:
+    """
+    各袖依自己市場的 Level 決定可投入額度（2026-07-20 deploy_gate_backtest 方案E）。
+
+    gaps_twd: {sleeve_key: 距目標配置的缺口(元)}；levels: {'taiex': int, 'us': int}
+    避險袖（gold_fx／crypto）依 sleeve_level_source 標為 ungated＝不受景氣閘門限制。
+    回傳含各袖額度與合計；合計即新的 deployable_cash_twd。
+    """
+    pb = playbook or load_playbook()
+    cd = pb.get("capital_deployment") or {}
+    ratios = {int(k): float(v) for k, v in (cd.get("deploy_ratio_by_level") or
+                                            {"1": 0.6, "2": 0.5, "3": 0.3}).items()}
+    src = cd.get("sleeve_level_source") or {}
+    floor_pct = float(cd.get("cash_floor_pct_of_liquid") or 0.5)
+
+    cash = max(float(total_cash or 0), 0.0)
+    positive = {k: max(float(v or 0), 0.0) for k, v in (gaps_twd or {}).items()}
+    total_gap = sum(positive.values())
+    if cash <= 0 or total_gap <= 0:
+        return {"total": 0.0, "by_sleeve": {}, "ratios_used": {}, "total_gap": total_gap}
+
+    by_sleeve, ratios_used = {}, {}
+    for key, gap in positive.items():
+        if gap <= 0:
+            continue
+        which = str(src.get(key) or "taiex")
+        if which == "ungated":
+            r = 1.0
+        else:
+            lv = levels.get(which)
+            r = ratios.get(int(lv), ratios.get(2, 0.5)) if lv else ratios.get(2, 0.5)
+        share = cash * (gap / total_gap)
+        amt = min(share * r, gap)  # 不超過該袖缺口
+        by_sleeve[key] = round(amt, 0)
+        ratios_used[key] = r
+
+    # 地板：總現金的 floor_pct 永不動用，各袖加總不得越過
+    max_deployable = max(cash * (1.0 - floor_pct), 0.0)
+    total = min(sum(by_sleeve.values()), max_deployable)
+    if total < sum(by_sleeve.values()) and by_sleeve:
+        scale = total / sum(by_sleeve.values())
+        by_sleeve = {k: round(v * scale, 0) for k, v in by_sleeve.items()}
+    return {
+        "total": round(total, 0),
+        "cash_floor": round(cash * floor_pct, 0),
+        "by_sleeve": by_sleeve,
+        "ratios_used": ratios_used,
+        "levels": dict(levels),
+        "total_gap": round(total_gap, 0),
+    }
+
+
 def write_intents(intents: list[dict], extra: Optional[dict] = None) -> str:
     os.makedirs(os.path.dirname(INTENTS_PATH), exist_ok=True)
     by_code: dict[str, dict] = {}

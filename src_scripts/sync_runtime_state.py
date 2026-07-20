@@ -424,7 +424,13 @@ def auto_adjust_deployable(targets: dict, now) -> None:
     採針對性字串替換寫回，保留原檔排版；每次調整寫入稽核欄位與 log。
     """
     try:
-        from qty_suggest import load_playbook, suggest_deployable
+        from qty_suggest import (
+            load_playbook,
+            market_level,
+            suggest_deployable,
+            suggest_deployable_by_sleeve,
+        )
+        from build_position_playbook import _nav_parts, _alloc_pct
     except Exception as e:
         print(f"[deploy-auto] 略過（載入失敗 {e}）")
         return
@@ -447,17 +453,53 @@ def auto_adjust_deployable(targets: dict, now) -> None:
         print("[deploy-auto] 略過（macro_level 未知，不臆測）")
         return
 
-    dep = suggest_deployable(
-        total_liquid=total_cash,
-        deployable_now=now_dep,
-        macro_level=int(macro),
-        playbook=load_playbook(),
-    )
-    if not dep.get("action"):
-        print(f"[deploy-auto] 維持 {now_dep:,.0f}（Level{macro} 目標 {dep['target_deployable']:,.0f}，未達調整門檻）")
-        return
+    pb = load_playbook()
+    cd = pb.get("capital_deployment") or {}
+    step = float(cd.get("step_twd") or 100_000)
 
-    target = int(dep["target_deployable"])
+    if cd.get("per_sleeve_levels"):
+        # 各袖依自己市場 Level（2026-07-20 deploy_gate_backtest 方案E）
+        us_level = None
+        try:
+            from market_data import fetch_daily
+
+            us_closes = [float(r["close"]) for r in fetch_daily("VOO") if r.get("close")]
+            us_level = market_level(us_closes)
+        except Exception as e:
+            print(f"[deploy-auto] 美股 Level 取得失敗（{e}），該袖暫用台股 Level")
+        levels = {"taiex": int(macro), "us": int(us_level or macro)}
+
+        nav = _nav_parts(targets)
+        gaps = {}
+        for key in ("tw_core_0050", "tw_lev_00631L", "us_etf", "gold_fx", "crypto"):
+            _, tgt, held = _alloc_pct(nav, key, targets)
+            gaps[key] = max(tgt * nav["total_nav"] - held, 0.0)
+
+        res = suggest_deployable_by_sleeve(
+            total_cash=total_cash, gaps_twd=gaps, levels=levels, playbook=pb
+        )
+        target = int(res["total"])
+        detail = "｜".join(
+            f"{k.replace('tw_core_','').replace('tw_lev_','')}"
+            f"{res['ratios_used'].get(k, 0):.0%}:{v:,.0f}"
+            for k, v in res["by_sleeve"].items() if v > 0
+        )
+        level_txt = f"TAIEX L{levels['taiex']}／US L{levels['us']}"
+        extra_note = f"｜各袖 {detail}"
+    else:
+        dep = suggest_deployable(
+            total_liquid=total_cash,
+            deployable_now=now_dep,
+            macro_level=int(macro),
+            playbook=pb,
+        )
+        target = int(dep["target_deployable"])
+        level_txt = f"Level{macro}"
+        extra_note = ""
+
+    if abs(target - now_dep) < step:
+        print(f"[deploy-auto] 維持 {now_dep:,.0f}（{level_txt} 目標 {target:,.0f}，未達調整門檻）")
+        return
     path = os.path.join(WORKSPACE, "config", "my_targets.json")
     with open(path, "r", encoding="utf-8") as f:
         raw = f.read()
@@ -469,8 +511,8 @@ def auto_adjust_deployable(targets: dict, now) -> None:
 
     stamp = now.strftime("%Y-%m-%d %H:%M")
     note = (
-        f"[auto {stamp}] Level{macro}：{now_dep:,.0f}→{target:,.0f}"
-        f"（總現金 {total_cash:,.0f}×{dep['ratio']:.0%}，地板 {dep['cash_floor']:,.0f}）"
+        f"[auto {stamp}] {level_txt}：{now_dep:,.0f}→{target:,.0f}"
+        f"（總現金 {total_cash:,.0f}）{extra_note}"
     )
     apat = re.compile(r'("deployable_auto_note"\s*:\s*")([^"]*)(")')
     if apat.search(new_raw):
@@ -489,15 +531,20 @@ def auto_adjust_deployable(targets: dict, now) -> None:
     log_path = os.path.join(WORKSPACE, "reports", "latest", "deployable_auto_log.jsonl")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     with open(log_path, "a", encoding="utf-8") as f:
-        f.write(json.dumps({
+        entry = {
             "ts": now.isoformat(timespec="seconds"),
-            "macro_level": int(macro),
             "total_cash_twd": total_cash,
             "from": now_dep,
             "to": target,
-            "ratio": dep["ratio"],
-            "cash_floor": dep["cash_floor"],
-        }, ensure_ascii=False) + "\n")
+            "mode": "per_sleeve" if cd.get("per_sleeve_levels") else "global",
+        }
+        if cd.get("per_sleeve_levels"):
+            entry.update({"levels": res["levels"], "by_sleeve": res["by_sleeve"],
+                          "ratios_used": res["ratios_used"]})
+        else:
+            entry.update({"macro_level": int(macro), "ratio": dep["ratio"],
+                          "cash_floor": dep["cash_floor"]})
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
     print(f"[deploy-auto] {note}")
 
 

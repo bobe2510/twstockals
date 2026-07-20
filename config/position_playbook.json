@@ -5,11 +5,21 @@
   "phase1_note": "B 僅年線袖口 vs A：ΔCP+15.2，MDD惡化2.5pt≤3pt。C 現金版不採為進場預設。",
   "priority": ["sl", "rebalance_trim", "tp", "add", "enter", "raise_deploy_budget", "lower_deploy_budget", "gate_blocked"],
   "capital_deployment": {
-    "deploy_ratio_by_level": {"1": 0.4, "2": 0.3, "3": 0.15},
+    "deploy_ratio_by_level": {"1": 0.6, "2": 0.5, "3": 0.3},
+    "ratio_source": "2026-07-20 deploy_gate_backtest（34 cohorts／2004-2026）：方案E『各袖Level＋放寬』CP 4.32、CAGR中位+10.51%，優於原全域40/30/15（CP 3.97）。原比例無回測依據。",
+    "per_sleeve_levels": true,
+    "sleeve_level_source": {
+      "tw_core_0050": "taiex",
+      "tw_lev_00631L": "taiex",
+      "us_etf": "us",
+      "gold_fx": "ungated",
+      "crypto": "ungated"
+    },
+    "sleeve_level_note": "各袖依自己市場判定景氣閘門（台股袖看TAIEX、美股袖看VOO、避險袖不受限）。修正原本用單一台股指標綁住所有袖的不一致。",
     "cash_floor_pct_of_liquid": 0.5,
     "step_twd": 100000,
-    "rationale": "總現金先保留地板；可再投入上限隨 Level 調整（600先投200類）",
-    "reenable_when": "Level 回升或人工確認後才改 my_targets.deployable_cash_twd"
+    "rationale": "總現金先保留地板；各袖可投入上限依該袖市場 Level 調整",
+    "reenable_when": "Level 變動時由 sync_runtime_state.auto_adjust_deployable 自動調整"
   },
   "roles": {
     "core_tw_lev": {

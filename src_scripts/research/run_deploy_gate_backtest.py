@@ -169,6 +169,7 @@ def main():
         ("B 全域TAIEX Level（現行40/30/15）", "global", RATIOS_STD),
         ("C 各袖自己Level（台股/美股分開）", "per_sleeve", RATIOS_STD),
         ("D 全域但放寬（60/50/30）", "global", RATIOS_WIDE),
+        ("E 各袖Level＋放寬（採用案）", "per_sleeve", RATIOS_WIDE),
     ]
     cohorts = list(range(0, len(df) - HORIZON, COHORT_STEP))
     print(f"cohorts={len(cohorts)}（每半年一個、各持有5年）\n")
