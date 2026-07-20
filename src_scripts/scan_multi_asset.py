@@ -385,6 +385,10 @@ def main():
     multi = targets.get("multi_asset") or {}
     cash = int(multi.get("deployable_cash_twd") or 2_000_000)
     pause_us = bool(multi.get("pause_us_ib"))
+    # 外幣買賣銀行可設定（黃金存摺仍固定台銀，兩者不同）
+    fx_bank_label = str(
+        (multi.get("forex_usd") or {}).get("trade_bank_label") or "台銀 App"
+    )
 
     # 幣加碼閘門：實際占比 vs allocation_targets.crypto，≤目標即自動開放；
     # 算不出（nav 資料缺）時保守維持暫停。取代原本寫死的 True。
@@ -589,7 +593,7 @@ def main():
             msg = (
                 f"USD/TWD {fx:.4f}｜評等 {ug['grade']}（門檻≥{min_g}）。\n"
                 f"{ug['reason']}\n"
-                f"**{verb}** 本次約 **{amt:,}** 元台幣換匯（台銀 App）。\n"
+                f"**{verb}** 本次約 **{amt:,}** 元台幣換匯（{fx_bank_label}）。\n"
                 f"{format_cash_pool_footer('USDTWD', state=ladder_state, policy=policy, suggest_twd=amt)}"
             )
             actions.append(("USDTWD", "fx_buy_zone", "eod_action", title, msg))
@@ -650,7 +654,7 @@ def main():
                 if sell_usd > 0 and trim["held_usd"] > 0:
                     msg += (
                         f"**建議減碼約 {sell_usd:,.0f} 美金**"
-                        f"（約 {sell_twd:,} 元台幣），台銀結匯。\n"
+                        f"（約 {sell_twd:,} 元台幣），{fx_bank_label}結匯。\n"
                         f"持倉約 {trim['held_usd']:,.0f} 美金；"
                         f"單次上限持倉 {int(trim['max_pct']*100)}%，非出清核心。\n"
                         f"執行：暫不囤匯；有閒錢優先黃金／現金，勿追美元。"

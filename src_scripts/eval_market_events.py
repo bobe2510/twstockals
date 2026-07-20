@@ -588,6 +588,61 @@ def eval_us_ib_window(*, quiet: bool, force: bool) -> list[str]:
     return results
 
 
+def eval_bond_time_floor(*, quiet: bool, force: bool) -> list[str]:
+    """
+    gradual_exit 部位的時間底線：本月若一批都沒出，月底前主動提醒。
+    避免「等反彈」變成無限期拖延（2026-07-20 之前此規則只是推播文字，未真正追蹤）。
+    判定：持倉>0 且 今天在月底前 5 個日曆日內 且 last_exit_date 不在本月。
+    """
+    import calendar
+
+    targets = _load_json(TARGETS_PATH)
+    now = taiwan_now()
+    ym = now.strftime("%Y-%m")
+    last_day = calendar.monthrange(now.year, now.month)[1]
+    near_month_end = (last_day - now.day) <= 5
+    results = []
+
+    for h in targets.get("portfolio") or []:
+        if not isinstance(h, dict) or str(h.get("policy") or "") != "gradual_exit":
+            continue
+        code = str(h.get("code"))
+        name = str(h.get("name") or "")
+        try:
+            shares = float(h.get("shares") or 0)
+        except (TypeError, ValueError):
+            shares = 0.0
+        if shares <= 0:
+            continue
+
+        last_exit = str(h.get("last_exit_date") or "")
+        done_this_month = last_exit.startswith(ym)
+        eid = f"bond_time_floor_{code}"
+        hit = near_month_end and not done_this_month
+        tranche = max(int(shares / 3 / 1000) * 1000, 1000)  # 1/3 取整張
+
+        apply_desired(
+            eid,
+            hit,
+            title_on=f"⏰ 時間底線：{code} 本月尚未減碼",
+            body_on=(
+                f"{code} {name} 持有 {shares:,.0f} 股，本月未出任何一批"
+                f"（上次 {last_exit or '無紀錄'}）。\n"
+                f"依 gradual_exit 時間底線：**月底前以收盤價出約 {tranche:,} 股**，"
+                "不再等反彈。資金轉現金／美金／黃金。"
+            ),
+            title_off=f"{code} 時間底線解除",
+            body_off=f"{code} 本月已執行減碼（{last_exit}），時間底線解除。",
+            notify_clear=True,
+            meta={"shares": shares, "last_exit": last_exit, "suggest_shares": tranche},
+            force_notify=force,
+            quiet=quiet,
+        )
+        results.append(f"{code}: near_end={near_month_end} done={done_this_month} hit={hit}")
+
+    return results or ["no gradual_exit position"]
+
+
 def eval_ingest(*, quiet: bool, force: bool) -> list[str]:
     rules = load_alert_rules()
     pol = _policies(rules)
@@ -654,6 +709,7 @@ def run_all(
     )
     out["shock"] = eval_asset_shocks(rules, quiet=quiet, force=force)
     out["us_ib_window"] = eval_us_ib_window(quiet=quiet, force=force)
+    out["bond_floor"] = eval_bond_time_floor(quiet=quiet, force=force)
     if not skip_ingest:
         out["ingest"] = eval_ingest(quiet=quiet, force=force)
     for k, v in out.items():

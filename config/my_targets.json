@@ -12,6 +12,8 @@
       "shares": 3000,
       "cost": 33.2,
       "policy": "gradual_exit",
+      "last_exit_date": "2026-07-20",
+      "last_exit_note": "賣1張@28.07；時間底線以此判定本月已執行（eval_bond_time_floor 讀此欄位）",
       "note": "2026-07-20逢彈賣出1張@28.07（原4000→3000股）。長天期美債波動大；逢彈分批出清（反彈近10MA或單日彈≥2%賣1/3），資金轉現金／台銀美金／黃金。不加碼。時間底線：單月無成交則月底直接出1/3，避免無限等待。"
     }
   ],
@@ -177,6 +179,8 @@
     },
     "forex_usd": {
       "bank": "BOT",
+      "trade_bank_label": "國泰世華 App",
+      "trade_bank_note": "2026-07-20 起外幣買賣改國泰世華（台銀庫存美金週五全額匯 IB 後歸零；台銀帳戶保留給黃金存摺）。推播文案讀此欄位。",
       "qty": 16158.31,
       "approx_twd": 520489,
       "cost_twd": null,
@@ -220,6 +224,20 @@
       }
     ],
     "us_etf": [],
+    "us_etf_schema": {
+      "note": "買進後每檔一筆填入此陣列（_alloc_pct 讀 approx_twd 算 us_etf 占比；空陣列＝系統認定尚未建倉、會持續建議匯款）。",
+      "example": {
+        "symbol": "VOO",
+        "shares": 0,
+        "cost_usd": 0,
+        "approx_twd": 0,
+        "venue": "IB",
+        "as_of": "YYYY-MM-DD"
+      },
+      "reminder": "approx_twd 為靜態估值，隨股價漂移；每次回報成交或月度對帳時一併更新。"
+    },
+    "ib_cash_usd": 0,
+    "ib_cash_note": "IB 帳戶美元現金（已匯入未買進的部分）。匯款到帳後填入；買進後遞減。屬 gold_fx／美金袖曝險，非 us_etf。",
     "us_etf_plan": {
       "status": "watch_until_ib_go",
       "pause_ib": true,
