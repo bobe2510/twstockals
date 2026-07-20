@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-07-18T17:15:41+08:00",
+  "as_of": "2026-07-20T15:26:36+08:00",
   "portfolio": [
     {
       "code": "00631L",
@@ -12,26 +12,10 @@
     {
       "code": "00687B",
       "name": "國泰20年美債",
-      "shares": 4000,
+      "shares": 3000,
       "cost": 33.2,
       "policy": "gradual_exit",
-      "note": "長天期美債波動大；長期逢彈分批出清，資金轉現金／台銀美金／黃金。不加碼。"
-    },
-    {
-      "code": "2301",
-      "name": "光寶科",
-      "shares": 1000,
-      "cost": 217.67,
-      "policy": null,
-      "note": "剩1張(1000股)。2026-07-14盤中賣出2張（收盤未破防守，賣在阿呆谷）"
-    },
-    {
-      "code": "3484",
-      "name": "崧騰",
-      "shares": 5000,
-      "cost": 51.82,
-      "policy": null,
-      "note": null
+      "note": "2026-07-20逢彈賣出1張@28.07（原4000→3000股）。長天期美債波動大；逢彈分批出清（反彈近10MA或單日彈≥2%賣1/3），資金轉現金／台銀美金／黃金。不加碼。時間底線：單月無成交則月底直接出1/3，避免無限等待。"
     }
   ],
   "cleared_positions": [
@@ -74,137 +58,57 @@
       "pnl_twd": -5200,
       "pnl_pct": -5.1,
       "note": "紀律停損出清（5日低／防守破）"
+    },
+    {
+      "code": "2301",
+      "name": "光寶科",
+      "cleared_on": "2026-07-20",
+      "exit_price": 194.5,
+      "cost": 217.67,
+      "shares": 1000,
+      "pnl_twd": -23170,
+      "pnl_pct": -10.64,
+      "note": "剩餘1張紀律停損出清（5日低／防守破，未站回）"
+    },
+    {
+      "code": "3484",
+      "name": "崧騰",
+      "cleared_on": "2026-07-20",
+      "exit_price": 46.9,
+      "cost": 51.82,
+      "shares": 5000,
+      "pnl_twd": -24600,
+      "pnl_pct": -9.49,
+      "note": "紀律停損出清（5日低／防守破，未站回）"
     }
   ],
   "force_exit_codes": [],
   "multi_asset_summary": {
     "gold_g": 117.2,
     "usd": 16158.31,
-    "deployable_cash_twd": 1859783,
+    "deployable_cash_twd": 2631414,
     "pause_us_ib": true,
-    "crypto_approx_twd": 650000,
-    "crypto_ledger_as_of": "2026-07-14"
+    "crypto_approx_twd": 243000,
+    "crypto_ledger_as_of": "2026-07-20"
   },
   "crypto_holdings": [
     {
-      "symbol": "BTC-USD",
-      "name": "Bitcoin",
-      "qty": 0.06932548,
-      "venues": [
-        "binance"
-      ],
-      "approx_twd_total_crypto": 650000,
-      "note": "全倉粗估含穩定幣與ETH等；已偏重（目標≤3%）勿再加碼。明細見 crypto_ledger"
-    },
-    {
-      "symbol": "ETH-USD",
-      "name": "Ethereum",
-      "qty": 1.43579588,
-      "venues": [
-        "binance"
-      ],
-      "approx_twd_total_crypto": null,
-      "note": null
-    },
-    {
       "symbol": "USDT-USD",
       "name": "USDT",
-      "qty": 10197.52932165,
-      "venues": [
-        "binance",
-        "bitopro"
-      ],
-      "approx_twd_total_crypto": null,
-      "note": "Binance 8687.09696535 + BitoPro 1510.4323563"
-    },
-    {
-      "symbol": "USDC-USD",
-      "name": "USDC",
-      "qty": 7.4368568,
+      "qty": 7500.0,
       "venues": [
         "binance"
       ],
-      "approx_twd_total_crypto": null,
-      "note": null
-    },
-    {
-      "symbol": "PEPE-USD",
-      "name": "PEPE",
-      "qty": 501109.9,
-      "venues": [
-        "binance"
-      ],
-      "approx_twd_total_crypto": null,
-      "note": null
-    },
-    {
-      "symbol": "BNB-USD",
-      "name": "BNB",
-      "qty": 0.00024986,
-      "venues": [
-        "binance"
-      ],
-      "approx_twd_total_crypto": null,
-      "note": null
-    },
-    {
-      "symbol": "POL-USD",
-      "name": "Polygon POL",
-      "qty": 0.998,
-      "venues": [
-        "bitopro"
-      ],
-      "approx_twd_total_crypto": null,
-      "note": null
-    },
-    {
-      "symbol": "SXT",
-      "name": "SXT",
-      "qty": 16.77819,
-      "venues": [
-        "binance"
-      ],
-      "approx_twd_total_crypto": null,
-      "note": "無穩定 Yahoo 代號，僅記帳"
-    },
-    {
-      "symbol": "NOT",
-      "name": "NOT",
-      "qty": 10,
-      "venues": [
-        "binance"
-      ],
-      "approx_twd_total_crypto": null,
-      "note": "僅記帳"
-    },
-    {
-      "symbol": "CGPT",
-      "name": "CGPT",
-      "qty": 0.05,
-      "venues": [
-        "binance"
-      ],
-      "approx_twd_total_crypto": null,
-      "note": "僅記帳"
+      "approx_twd_total_crypto": 243000,
+      "note": "全倉即此筆穩定幣（無風險倉）。回補條件：BTC 站回200MA且12月動量轉正／ETH 站回200MA。"
     }
   ],
   "crypto_ledger": {
-    "as_of": "2026-07-14",
+    "as_of": "2026-07-20",
     "binance": {
-      "USDT": 8687.09696535,
-      "BTC": 0.06932548,
-      "ETH": 1.43579588,
-      "USDC": 7.4368568,
-      "PEPE": 501109.9,
-      "SXT": 16.77819,
-      "BNB": 0.00024986,
-      "NOT": 10,
-      "CGPT": 0.05
+      "USDT": 7500.0
     },
-    "bitopro": {
-      "USDT": 1510.4323563,
-      "POL": 0.998
-    },
-    "note": "穩定幣合計：USDT 10,197.53 + USDC 7.44；小幣 SXT/NOT/CGPT 僅記帳"
+    "bitopro": {},
+    "note": "2026-07-20 趨勢出場全面執行：BTC/ETH 破年線依 trend_exit 規則全數換 USDT，塵埃幣（PEPE/SXT/NOT/CGPT/BNB/POL/USDC）一併清空。留 7,500 USDT 於幣安活期＝3% 目標的回補彈藥；其餘經幣托換回台幣 316,500 元匯入銀行。"
   }
 }

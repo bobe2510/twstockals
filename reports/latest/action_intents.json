@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-18T12:20:41",
+  "generated_at": "2026-07-20T15:26:37",
   "note": "推播≠已成交／已改設定；deployable 須人工確認後改 my_targets",
   "intents": [
     {
@@ -20,33 +20,16 @@
       "source": "position_playbook"
     },
     {
-      "code": "CRYPTO",
-      "venue": "CEX",
-      "side": "sell",
-      "action": "rebalance_trim",
-      "qty": null,
-      "unit": "",
-      "twd": 399335.0,
-      "limit_ref": "占比7.8%>目標3%",
-      "urgency": "WARN",
-      "rationale": "加密超配：主路徑再平衡減碼（非只等破線）",
-      "gate_type": "temporary",
-      "reenable_when": "占比≤目標後才可談加碼",
-      "exec_after": "13:40或次日開／避開09:00-09:30",
-      "priority": 20,
-      "source": "position_playbook"
-    },
-    {
       "code": "CASH",
       "venue": "BANK",
       "side": "adjust",
       "action": "lower_deploy_budget",
       "qty": null,
       "unit": "",
-      "twd": 878967.0,
+      "twd": 994712.0,
       "limit_ref": "Level3 ratio=15%",
       "urgency": "INFO",
-      "rationale": "建議可再投入上限 1,859,783→878,967元（地板2,929,892）；確認後再改設定",
+      "rationale": "建議可再投入上限 2,631,414→994,712元（地板3,315,707）；確認後再改設定",
       "gate_type": "conditional",
       "reenable_when": "Level 回升或人工確認後才改 my_targets.deployable_cash_twd",
       "exec_after": "13:40或次日開／避開09:00-09:30",
@@ -56,10 +39,10 @@
   ],
   "extra": {
     "nav": {
-      "invested": 2495727.0,
-      "cash": 5859783.0,
-      "deployable": 1859783.0,
-      "total_nav": 8355510.0,
+      "invested": 1629197.0,
+      "cash": 6631414.0,
+      "deployable": 2631414.0,
+      "total_nav": 8260611.0,
       "macro_level": 3
     }
   }

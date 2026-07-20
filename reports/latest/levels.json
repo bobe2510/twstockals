@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-18T17:15:41+08:00",
-  "as_of": "2026-07-18",
+  "generated_at": "2026-07-20T15:26:36+08:00",
+  "as_of": "2026-07-20",
   "macro_level": 3,
   "force_exit_codes": [],
   "eod_actions": [
@@ -50,46 +50,6 @@
       "cost": 33.2,
       "ma200": 28.2675,
       "above_200ma": false
-    },
-    {
-      "code": "2301",
-      "name": "光寶科",
-      "status": "portfolio",
-      "force_exit": false,
-      "close": 196.5,
-      "stop": 196.5,
-      "profit": 215.95,
-      "entry": null,
-      "add": 215.95,
-      "ma5": 213.0,
-      "ma10": 214.85,
-      "ma20": 216.075,
-      "low_5d": 196.5,
-      "profit_rule": "ma10",
-      "ma200": 178.3825,
-      "above_200ma": true,
-      "cost": 217.67,
-      "roi_pct": -9.725731612073318
-    },
-    {
-      "code": "3484",
-      "name": "崧騰",
-      "status": "portfolio",
-      "force_exit": false,
-      "close": 47.0,
-      "stop": 47.0,
-      "profit": 52.6,
-      "entry": null,
-      "add": 52.1,
-      "ma5": 50.78,
-      "ma10": 51.69,
-      "ma20": 51.82000000000001,
-      "low_5d": 47.0,
-      "profit_rule": "ma5",
-      "ma200": 47.881499999999996,
-      "above_200ma": false,
-      "cost": 51.82,
-      "roi_pct": -9.30142802006947
     },
     {
       "code": "0050",
@@ -267,5 +227,5 @@
     }
   ],
   "pruned_against_my_targets": true,
-  "synced_at": "2026-07-18T17:15:41+08:00"
+  "synced_at": "2026-07-20T15:26:36+08:00"
 }

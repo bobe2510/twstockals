@@ -191,90 +191,32 @@
       "note": "台銀外匯美金 16,158.31（2026-07-16 結售 3,100＠32.21→99,851）；約台幣 520,489"
     },
     "crypto_ledger": {
-      "as_of": "2026-07-14",
+      "as_of": "2026-07-20",
       "binance": {
-        "USDT": 8687.09696535,
-        "BTC": 0.06932548,
-        "ETH": 1.43579588,
-        "USDC": 7.4368568,
-        "PEPE": 501109.9,
-        "SXT": 16.77819,
-        "BNB": 0.00024986,
-        "NOT": 10,
-        "CGPT": 0.05
+        "USDT": 7500.0
       },
-      "bitopro": {
-        "USDT": 1510.4323563,
-        "POL": 0.998
-      },
-      "note": "穩定幣合計：USDT 10,197.53 + USDC 7.44；小幣 SXT/NOT/CGPT 僅記帳"
+      "bitopro": {},
+      "note": "2026-07-20 趨勢出場全面執行：BTC/ETH 破年線依 trend_exit 規則全數換 USDT，塵埃幣（PEPE/SXT/NOT/CGPT/BNB/POL/USDC）一併清空。留 7,500 USDT 於幣安活期＝3% 目標的回補彈藥；其餘經幣托換回台幣 316,500 元匯入銀行。"
     },
     "crypto": [
       {
-        "symbol": "BTC-USD",
-        "name": "Bitcoin",
-        "qty": 0.06932548,
-        "venues": ["binance"],
-        "approx_twd_total_crypto": 650000,
-        "note": "全倉粗估含穩定幣與ETH等；已偏重（目標≤3%）勿再加碼。明細見 crypto_ledger"
-      },
-      {
-        "symbol": "ETH-USD",
-        "name": "Ethereum",
-        "qty": 1.43579588,
-        "venues": ["binance"]
-      },
-      {
         "symbol": "USDT-USD",
         "name": "USDT",
-        "qty": 10197.52932165,
-        "venues": ["binance", "bitopro"],
-        "note": "Binance 8687.09696535 + BitoPro 1510.4323563"
-      },
-      {
-        "symbol": "USDC-USD",
-        "name": "USDC",
-        "qty": 7.4368568,
-        "venues": ["binance"]
-      },
-      {
-        "symbol": "PEPE-USD",
-        "name": "PEPE",
-        "qty": 501109.9,
-        "venues": ["binance"]
-      },
-      {
-        "symbol": "BNB-USD",
-        "name": "BNB",
-        "qty": 0.00024986,
-        "venues": ["binance"]
-      },
-      {
-        "symbol": "POL-USD",
-        "name": "Polygon POL",
-        "qty": 0.998,
-        "venues": ["bitopro"]
-      },
-      {
-        "symbol": "SXT",
-        "name": "SXT",
-        "qty": 16.77819,
+        "qty": 7500.0,
         "venues": ["binance"],
-        "note": "無穩定 Yahoo 代號，僅記帳"
-      },
+        "approx_twd_total_crypto": 243000,
+        "note": "全倉即此筆穩定幣（無風險倉）。回補條件：BTC 站回200MA且12月動量轉正／ETH 站回200MA。"
+      }
+    ],
+    "crypto_exit_log": [
       {
-        "symbol": "NOT",
-        "name": "NOT",
-        "qty": 10,
-        "venues": ["binance"],
-        "note": "僅記帳"
-      },
-      {
-        "symbol": "CGPT",
-        "name": "CGPT",
-        "qty": 0.05,
-        "venues": ["binance"],
-        "note": "僅記帳"
+        "date": "2026-07-20",
+        "action": "trend_exit_all",
+        "detail": "BTC 0.06932548（vs200MA -12.0%、12月動量負）＋ETH 1.43579588（vs200MA -14.7%）＋塵埃幣全數換 USDT",
+        "kept_usdt_binance": 7500.0,
+        "twd_repatriated": 316500,
+        "rule": "trend_200ma_or_mom12 (BTC)／trend_200ma (ETH)／dust_rule",
+        "note": "trend_exit_backtest 2026-07-18 上線後第一次實際出場訊號"
       }
     ],
     "us_etf": [],
@@ -303,13 +245,13 @@
         "default": "合併成 USDT 再丟活期",
         "do_not_churn": "利率差很小不要來回換"
       },
-      "add_rules": "已偏重：不加 BTC/ETH；山寨不碰",
+      "add_rules": "2026-07-20 起趨勢轉空已全數出場，僅持 7,500 USDT 彈藥；回補條件＝BTC 站回200MA且12月動量轉正／ETH 站回200MA，且占比未超 3%。山寨不碰。",
       "core_exit_rules": "BTC：破200MA且12月動量負→全減；ETH：破200MA→全減（2026-07-18 trend_exit_backtest；取代破50MA可減）",
       "dust_rule": "塵埃倉（PEPE/SXT/NOT/CGPT/BNB零頭/POL/USDC零頭）：合計不足萬元、不設停損；手續費可行時一次性換 USDT 清倉，禁止加碼"
     },
-    "total_cash_twd": 5859783,
-    "deployable_cash_twd": 1859783,
-    "cash_note": "總現金水位另計；既有持股／存摺已投資。deployable_cash_twd＝可再投入新增現金（2026-07-16：買金−240,068、美金結售＋99,851 → 約185.98萬）。其中約25%為機會準備金（USDTWD／VOO／VXUS），其餘常態池。新錢只進 approved_universe.buy_allowed。",
+    "total_cash_twd": 6631414,
+    "deployable_cash_twd": 2631414,
+    "cash_note": "總現金水位另計；既有持股／存摺已投資。deployable_cash_twd＝可再投入新增現金。2026-07-20 進帳合計 +771,631（2301停損淨193,639｜3484停損淨233,462｜00687B減碼淨28,030｜加密回台316,500）→ 約263.14萬。其中約25%為機會準備金（USDTWD／VOO／VXUS），其餘常態池。新錢只進 approved_universe.buy_allowed。註：台股賣出淨額已扣手續費0.1425%＋證交稅（個股0.3%、債券ETF免徵），與券商對帳單如有零頭差異以對帳單為準。",
     "pause_us_ib": true
   },
   "allocation_targets": {
