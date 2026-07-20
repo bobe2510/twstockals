@@ -524,6 +524,7 @@ def eval_us_ib_window(*, quiet: bool, force: bool) -> list[str]:
     # 具體金額：us_etf 目標配置 − 已持有，VOO/VXUS/QQQ = 45.5/19.5/35%（核心7:3、成長袖<VOO），
     # 分 3 批×每月（2026-07-19 deploy_pacing_backtest：LS中位數最高但T3為操作折衷；>3批明確差）。
     amounts_txt = ""
+    budget = 0.0  # 先初始化：計算失敗時 meta 仍可安全取用
     try:
         from build_position_playbook import _nav_parts, _alloc_pct
 
@@ -578,7 +579,8 @@ def eval_us_ib_window(*, quiet: bool, force: bool) -> list[str]:
         title_off="美股布局窗關閉",
         body_off=f"VOO 轉空：{detail}。窗口關閉，暫緩入金。",
         notify_clear=True,
-        meta={"on": on_syms, "off": off_syms},  # 精簡：明細只在轉態推播內文，避免每日事件列雜訊
+        # 精簡但帶金額：日報要能直接顯示「該匯多少」，不必回頭翻開窗推播
+        meta={"on": on_syms, "off": off_syms, "wire_twd": round(budget) if budget else 0},
         force_notify=force,
         quiet=quiet,
     )

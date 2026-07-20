@@ -132,7 +132,7 @@ def build_body(slot: str) -> tuple[str, str]:
     event_labels = {
         "macro_level": "大盤警戒",
         "yearline_taiex_00631L": "正2/大盤破年線",
-        "us_ib_window": "★美股布局窗開啟（可入金IB，金額見開窗推播）",
+        "us_ib_window": "★美股布局窗開啟（詳見下方今日行動）",
         "rule_health": "規則健康檢查失敗",
         "ingest_pipeline": "資料管線異常",
     }
@@ -153,7 +153,7 @@ def build_body(slot: str) -> tuple[str, str]:
 
     # Actions / pending
     lines.append("")
-    lines.append("【需執行／待辦】")
+    lines.append("【各部位狀態】")
     eod_actions = levels.get("eod_actions") or []
     ops = []
     if isinstance(pending, dict):
@@ -170,14 +170,81 @@ def build_body(slot: str) -> tuple[str, str]:
     else:
         lines.append("• （無急迫待辦；詳見 levels／playbook）")
 
-    if isinstance(intents, dict) and intents.get("intents"):
+    # 【今日行動】把 playbook 意圖翻成「做什麼／多少／在哪做」，並分出要不要動手
+    ACTION_LABELS = {
+        "gate_blocked": "維持不動",
+        "rebalance_trim": "再平衡減碼",
+        "lower_deploy_budget": "調降可投入上限",
+        "raise_deploy_budget": "調高可投入上限",
+        "sl": "停損減碼",
+        "sl_200": "破年線減碼",
+        "tp": "停利減碼",
+        "enter": "建倉買進",
+        "add": "加碼買進",
+        "exit_all": "全數出清",
+    }
+    SIDE_MARK = {"buy": "🟢 買", "sell": "🔴 賣", "hold": "⚪ 不動", "adjust": "🔧 改設定"}
+    VENUE_LABELS = {
+        "TW": "券商（台股）", "BOT": "台銀 App", "IB": "IB", "CEX": "幣安／幣托",
+        "BANK": "設定調整（非交易）",
+    }
+
+    def _fmt_size(it: dict) -> str:
+        qty, unit, twd = it.get("qty"), it.get("unit") or "", it.get("twd")
+        if qty:
+            s = f"{qty:,.0f} {unit}".strip()
+            if twd:
+                s += f"（約 {twd:,.0f} 元）"
+            return s
+        if twd:
+            return f"約 {twd:,.0f} 元"
+        return "—"
+
+    all_intents = [x for x in (intents.get("intents") or []) if isinstance(x, dict)] \
+        if isinstance(intents, dict) else []
+    todo = [x for x in all_intents if x.get("side") in ("buy", "sell")]
+    fyi = [x for x in all_intents if x.get("side") not in ("buy", "sell")]
+
+    # 事件型待辦（非 playbook intent）：美股布局窗＝要去匯款，屬於必須動手的事
+    event_todo = []
+    for ev in act:
+        if str(ev.get("event_id")) == "us_ib_window":
+            w = (ev.get("meta") or {}).get("wire_twd") or 0
+            amt = f"約 {w:,.0f} 元" if w else "金額見開窗推播"
+            event_todo.append(
+                f"• 🟢 匯款 IB｜{amt}（台銀臨櫃電匯）\n"
+                f"    依據：美股趨勢閘門 ON（VOO 核心錨轉多）\n"
+                f"    到帳後分 3 批×每月買進 VOO/VXUS/QQQ"
+            )
+
+    lines.append("")
+    lines.append("【今日行動】")
+    if not todo and not event_todo:
+        lines.append("• ✅ 今日無需買賣。維持現狀即可。")
+    for x in event_todo:
+        lines.append(x)
+    if todo:
+        for it in todo[:6]:
+            mark = SIDE_MARK.get(it.get("side"), "•")
+            act = ACTION_LABELS.get(it.get("action"), it.get("action") or "")
+            venue = VENUE_LABELS.get(it.get("venue"), it.get("venue") or "")
+            lines.append(
+                f"• {mark} {it.get('code')}｜{act} {_fmt_size(it)}｜在 {venue}"
+            )
+            if it.get("limit_ref"):
+                lines.append(f"    依據：{it['limit_ref']}")
+            if it.get("exec_after"):
+                lines.append(f"    時機：{it['exec_after']}")
+    for it in fyi[:4]:
+        act = ACTION_LABELS.get(it.get("action"), it.get("action") or "")
+        why = it.get("rationale") or ""
+        lines.append(f"• ⚪ {it.get('code')}｜{act}（{why[:40]}）")
+
+    if todo or event_todo:
         lines.append("")
-        lines.append("【Playbook 意圖摘要】")
-        for it in (intents.get("intents") or [])[:8]:
-            if isinstance(it, dict):
-                lines.append(
-                    f"• {it.get('code') or ''} {it.get('action') or it.get('intent') or it}"
-                )
+        lines.append("【做完回報我】")
+        lines.append("• 成交後告訴我：商品＋成交價＋股數／金額（例：「0050 買 160,000 元 @105.2」）")
+        lines.append("• 我會更新持倉與現金，占比與下次建議才會準確；沒回報＝系統仍當你沒做")
 
     if slot == "close":
         lines.append("")
