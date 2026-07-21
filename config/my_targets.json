@@ -274,6 +274,8 @@
       "core_exit_rules": "BTC：破200MA且12月動量負→全減；ETH：破200MA→全減（2026-07-18 trend_exit_backtest；取代破50MA可減）",
       "dust_rule": "塵埃倉（PEPE/SXT/NOT/CGPT/BNB零頭/POL/USDC零頭）：合計不足萬元、不設停損；手續費可行時一次性換 USDT 清倉，禁止加碼"
     },
+    "cash_reserve_twd": 2000000,
+    "cash_reserve_note": "永久準備金／緊急備用，不進風險配置。配置基準＝總資產−此準備金（2026-07-21 起，_nav_parts.investable_base）。各袖目標%對投資基準算，不逼你把安全水位投出去。此金額≠deployable（deployable 另受 Level 動態管控）。",
     "total_cash_twd": 6631414,
     "deployable_cash_twd": 2699382,
     "deployable_auto_note": "[auto 2026-07-20 16:30] TAIEX L3／US L3：994,712→2,699,382（總現金 6,631,414）｜各袖 005030%:949,988｜00631L30%:230,577｜us_etf30%:461,423｜gold_fx100%:1,052,576｜crypto100%:4,818",

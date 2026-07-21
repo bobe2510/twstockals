@@ -84,6 +84,10 @@ def _nav_parts(targets: dict) -> dict:
     if not deployable:
         deployable = float((_load(POLICY).get("deployable_cash_twd") or 0))
     total_nav = invested + cash
+    # 配置基準＝總資產 − 準備金（永久留現金、不進風險配置；2026-07-21 起）。
+    # 各袖目標%對此基準算，不逼你把安全水位也投出去。
+    reserve = float(multi.get("cash_reserve_twd") or 0)
+    investable_base = max(total_nav - reserve, 1.0)
     return {
         "port": port,
         "gold": float(gold),
@@ -93,8 +97,10 @@ def _nav_parts(targets: dict) -> dict:
         "crypto": float(crypto),
         "invested": invested,
         "cash": cash,
+        "reserve": reserve,
         "deployable": deployable,
         "total_nav": total_nav or 1.0,
+        "investable_base": investable_base,
         "macro_level": int(levels.get("macro_level") or 2),
         "above_200": next(
             (r.get("above_200ma") for r in (levels.get("levels") or []) if r.get("code") == "TAIEX"),
@@ -107,7 +113,7 @@ def _alloc_pct(nav: dict, key: str, targets: dict) -> tuple[float, float, float]
     """回傳 (held_pct, target_pct, held_twd)。"""
     alloc = targets.get("allocation_targets") or {}
     target = float(alloc.get(key) or 0)
-    total = nav["total_nav"]
+    total = nav.get("investable_base") or nav["total_nav"]  # 對投資基準算占比
     if key == "tw_lev_00631L":
         held = (nav["port"].get("00631L") or {}).get("approx") or 0
     elif key == "tw_core_0050":
@@ -191,7 +197,7 @@ def build() -> dict:
             card["today"] = "破年線減碼已建議、待回報成交（不重複累加）"
     elif over and shares > 0:
         # 超額股數
-        excess_twd = held_v - tgt * nav["total_nav"]
+        excess_twd = held_v - tgt * nav["investable_base"]
         if close and close > 0:
             raw_sh = excess_twd / float(close)
             qty, note = trim_shares(min(shares, raw_sh), 1.0)
@@ -249,7 +255,7 @@ def build() -> dict:
     }
     # +5pp（rebalance_band_backtest 2026-07-19）
     if c_tgt and c_pct > c_tgt + 0.05 and sh50 > 0 and px50:
-        excess_twd = c_held - c_tgt * nav["total_nav"]
+        excess_twd = c_held - c_tgt * nav["investable_base"]
         qty, note = trim_shares(min(sh50, excess_twd / float(px50)), 1.0)
         if qty > 0 and not already_suggested_trim("0050", "rebalance", trim_state):
             intents.append(
@@ -315,7 +321,7 @@ def build() -> dict:
     g_pct, g_tgt, g_held = _alloc_pct(nav, "gold", targets)
     gold_today = f"持有約 {nav['gold']:,.0f} 元（{g_pct*100:.1f}%／目標{g_tgt*100:.0f}%）"
     if g_tgt and g_pct > g_tgt + 0.05:  # +5pp
-        excess = g_held - g_tgt * nav["total_nav"]
+        excess = g_held - g_tgt * nav["investable_base"]
         gold_today = f"黃金超配 {g_pct*100:.1f}%>{g_tgt*100:.0f}%｜建議減約 {excess:,.0f} 元"
         if not already_suggested_trim("GOLD", "rebalance", trim_state):
             intents.append(make_intent(
@@ -337,7 +343,7 @@ def build() -> dict:
     fx_pct, fx_tgt, fx_held = _alloc_pct(nav, "fx", targets)
     fx_today = f"壓艙石約 {nav.get('fx_ballast', 0):,.0f} 元（{fx_pct*100:.1f}%／目標{fx_tgt*100:.0f}%）"
     if fx_tgt and fx_pct > fx_tgt + 0.03:  # 低波動，帶寬窄一點
-        excess = fx_held - fx_tgt * nav["total_nav"]
+        excess = fx_held - fx_tgt * nav["investable_base"]
         fx_today = f"美金壓艙石超配 {fx_pct*100:.1f}%>{fx_tgt*100:.0f}%｜可減約 {excess:,.0f} 元（或轉IB買股）"
     elif fx_tgt and fx_pct < fx_tgt - 0.03:
         fx_today += "｜低於目標，美金回到買點區（乖離年線轉負）時補壓艙石"
@@ -365,7 +371,7 @@ def build() -> dict:
     }
     # 小袖用相對帶寬 ~50%目標（3%→觸發於4.5%）；絕對帶寬對小袖永不觸發
     if cpct > ctgt + 0.015 and cheld > 0:
-        excess = cheld - ctgt * nav["total_nav"]
+        excess = cheld - ctgt * nav["investable_base"]
         ccard["today"] = f"超配｜建議減約 {excess:,.0f} 元市值至≤{ctgt*100:.0f}%"
         intents.append(
             make_intent(
@@ -442,7 +448,8 @@ def build() -> dict:
         f"- 目標函數：{pb.get('objective')}",
         f"- 階段1：{pb.get('phase1_verdict')} — {pb.get('phase1_note')}",
         f"- NAV 粗估：總計約 {nav['total_nav']:,.0f}｜已投資 {nav['invested']:,.0f}｜"
-        f"現金 {nav['cash']:,.0f}｜可再投入 {nav['deployable']:,.0f}｜Level **{nav['macro_level']}**",
+        f"現金 {nav['cash']:,.0f}（準備金 {nav['reserve']:,.0f}）｜可再投入 {nav['deployable']:,.0f}｜Level **{nav['macro_level']}**",
+        f"- **配置基準（投資分母）約 {nav['investable_base']:,.0f}**＝總資產−準備金；各袖目標%對此算",
         f"- Intent：`reports/latest/action_intents.json`",
         "",
         "## 資金部署",

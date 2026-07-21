@@ -473,7 +473,7 @@ def auto_adjust_deployable(targets: dict, now) -> None:
         gaps = {}
         for key in ("tw_core_0050", "tw_lev_00631L", "us_etf", "gold", "fx", "crypto"):
             _, tgt, held = _alloc_pct(nav, key, targets)
-            gaps[key] = max(tgt * nav["total_nav"] - held, 0.0)
+            gaps[key] = max(tgt * nav["investable_base"] - held, 0.0)
 
         res = suggest_deployable_by_sleeve(
             total_cash=total_cash, gaps_twd=gaps, levels=levels, playbook=pb
