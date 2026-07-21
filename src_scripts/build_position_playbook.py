@@ -145,6 +145,67 @@ def _alloc_pct(nav: dict, key: str, targets: dict) -> tuple[float, float, float]
     return (held / total if total else 0.0), target, held
 
 
+def product_targets(nav: dict, targets: dict) -> list[dict]:
+    """各『個別商品』目標金額（袖目標 × 袖內分配 × 投資基準）與現況缺口。"""
+    base = nav.get("investable_base") or nav["total_nav"]
+    alloc = targets.get("allocation_targets") or {}
+    splits = targets.get("sleeve_splits") or {}
+    multi = targets.get("multi_asset") or {}
+    rate = float(multi.get("usdtwd_rate_hint") or 32.4)
+
+    rows: list[dict] = []
+
+    def add(code, name, sleeve, pct_of_base, held, venue, note=""):
+        tgt = pct_of_base * base
+        rows.append({
+            "code": code, "name": name, "sleeve": sleeve,
+            "target_pct": pct_of_base * 100, "target_twd": tgt,
+            "held_twd": held, "gap_twd": max(tgt - held, 0.0),
+            "venue": venue, "note": note,
+        })
+
+    # 單一商品袖
+    add("0050", "元大台灣50", "台股核心", float(alloc.get("tw_core_0050") or 0),
+        (nav["port"].get("0050") or {}).get("approx") or 0, "券商")
+    add("00631L", "元大台灣50正2", "台股進攻", float(alloc.get("tw_lev_00631L") or 0),
+        (nav["port"].get("00631L") or {}).get("approx") or 0, "券商")
+    add("GOLD", "台銀黃金存摺", "黃金", float(alloc.get("gold") or 0), nav["gold"], "台銀App")
+    add("USDTWD", "美金壓艙石", "美金", float(alloc.get("fx") or 0),
+        nav.get("fx_ballast", 0.0), "國泰世華", "囤匯用；匯IB的美金算美股袖")
+
+    # 美股袖細分（已持有ETF依 us_etf 陣列；IB現金為未分配火藥）
+    us_sleeve = float(alloc.get("us_etf") or 0)
+    us_split = {k: v for k, v in (splits.get("us_etf") or {}).items() if not k.startswith("_")}
+    held_by_sym = {}
+    for x in (multi.get("us_etf") or []):
+        held_by_sym[str(x.get("symbol"))] = held_by_sym.get(str(x.get("symbol")), 0.0) + float(x.get("approx_twd") or 0)
+    for sym, w in us_split.items():
+        add(sym, sym, "美股", us_sleeve * w, held_by_sym.get(sym, 0.0), "IB")
+    ib_cash = nav.get("ib_usd", 0.0)
+    if ib_cash > 0:
+        rows.append({"code": "IB現金", "name": "IB美元(未買股)", "sleeve": "美股",
+                     "target_pct": 0.0, "target_twd": 0.0, "held_twd": ib_cash,
+                     "gap_twd": 0.0, "venue": "IB", "note": "火藥：趨勢ON時一次買掉，依上列比例分配"})
+
+    # 幣袖細分
+    c_sleeve = float(alloc.get("crypto") or 0)
+    c_split = {k: v for k, v in (splits.get("crypto") or {}).items() if not k.startswith("_")}
+    held_crypto = {}
+    for c in (multi.get("crypto") or []):
+        s = str(c.get("symbol") or "").replace("-USD", "")
+        held_crypto[s] = held_crypto.get(s, 0.0) + 0.0  # 現貨市值另計於 approx_twd_total_crypto
+    stable_twd = nav.get("crypto", 0.0)
+    for sym, w in c_split.items():
+        add(sym, sym, "加密", c_sleeve * w, held_crypto.get(sym, 0.0), "幣安",
+            "趨勢轉多才回補" if stable_twd > 0 else "")
+    if stable_twd > 0:
+        rows.append({"code": "USDT", "name": "穩定幣(待回補)", "sleeve": "加密",
+                     "target_pct": 0.0, "target_twd": 0.0, "held_twd": stable_twd,
+                     "gap_twd": 0.0, "venue": "幣安",
+                     "note": "BTC站回200MA且動量正／ETH站回200MA 時依上列比例回補"})
+    return rows
+
+
 def build() -> dict:
     pb = load_playbook()
     targets = _load(TARGETS)
@@ -455,6 +516,21 @@ def build() -> dict:
         "## 資金部署",
         "",
         f"- 今日建議：**{deploy_line}**（推播≠已改 `deployable_cash_twd`）",
+        "",
+        "## 各商品目標金額（袖目標 × 袖內分配 × 投資基準）",
+        "",
+        "| 商品 | 袖 | 目標% | **目標金額** | 目前持有 | **還差** | 在哪買 | 備註 |",
+        "|------|----|------:|------------:|---------:|--------:|--------|------|",
+    ]
+    for r in product_targets(nav, targets):
+        tgt_s = f"{r['target_twd']:,.0f}" if r["target_twd"] > 0 else "—"
+        pct_s = f"{r['target_pct']:.1f}%" if r["target_pct"] > 0 else "—"
+        gap_s = f"{r['gap_twd']:,.0f}" if r["gap_twd"] > 0 else "—"
+        lines.append(
+            f"| {r['code']} | {r['sleeve']} | {pct_s} | {tgt_s} | {r['held_twd']:,.0f} | "
+            f"{gap_s} | {r['venue']} | {r['note']} |"
+        )
+    lines += [
         "",
         "## 各商品四件套",
         "",

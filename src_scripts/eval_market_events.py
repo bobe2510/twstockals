@@ -539,7 +539,10 @@ def eval_us_ib_window(*, quiet: bool, force: bool) -> list[str]:
             total_gap += max(t * base - h, 0)
         budget = min(gap_us, deployable * gap_us / total_gap) if total_gap > 0 else 0
         ib_cash_twd = float(nav.get("ib_usd", 0.0))  # IB 現有火藥（可一次買）
-        split = {"VOO": 0.455, "VXUS": 0.195, "QQQ": 0.35}
+        # 袖內分配讀設定（sleeve_splits.us_etf），不再硬編碼
+        split = {k: float(v) for k, v in
+                 ((targets.get("sleeve_splits") or {}).get("us_etf") or {}).items()
+                 if not k.startswith("_")} or {"VOO": 0.455, "VXUS": 0.195, "QQQ": 0.35}
         if ib_cash_twd > 50_000:
             # IB 已有火藥 → lump-sum：趨勢ON就一次買掉
             rows = [f"  {s}：≈{ib_cash_twd*w:,.0f} 元（一次買）" for s, w in split.items()]

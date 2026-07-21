@@ -295,6 +295,20 @@
     "_gold_fx_split_note": "2026-07-21 拆分：黃金 gold 16% 與 壓艙石美金 fx 11% 各自獨立目標（性格相反：黃金會波動的危機英雄／美金穩定壓艙石；合併會架空黃金上限）。fx 只算囤匯壓艙石；匯IB待買股的美金歸 us_etf。",
     "_us_etf_note": "us_etf 33% ＝已買ETF ＋ IB現金 ＋ 電匯在途（皆美股袖進度）；新錢分批建、勿急"
   },
+  "sleeve_splits": {
+    "_note": "袖內各商品分配（佔該袖的比例，總和1.0）。乘上袖目標%再乘投資基準＝各商品目標金額。",
+    "us_etf": {
+      "VOO": 0.455,
+      "VXUS": 0.195,
+      "QQQ": 0.35,
+      "_source": "核心VOO:VXUS=7:3（既有政策）佔65%；成長袖QQQ 35%（政策要求 QQQ<VOO ✓ 35<45.5）。QQQ與QQQM二擇一。"
+    },
+    "crypto": {
+      "BTC": 0.7,
+      "ETH": 0.3,
+      "_source": "2026-07-18 trend_exit_backtest：BTC(複合)OOS +23.7%/-32.1% CP+15.44 遠優於 ETH(200MA)OOS +5.0%/-45.6% CP-7.70（ETH樣本外CP為負）。故偏重BTC。ETH續留僅為分散，可考慮歸零。"
+    }
+  },
   "force_exit_codes": [],
   "cleared_positions": [
     {

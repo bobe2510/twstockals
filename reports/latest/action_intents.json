@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-21T13:14:18",
+  "generated_at": "2026-07-22T00:07:01",
   "note": "推播≠已成交／已改設定；deployable 須人工確認後改 my_targets",
   "intents": [
     {
@@ -39,10 +39,10 @@
   ],
   "extra": {
     "nav": {
-      "invested": 1629197.0,
+      "invested": 1629317.0,
       "cash": 6631414.0,
       "deployable": 2699382.0,
-      "total_nav": 8260611.0,
+      "total_nav": 8260731.0,
       "macro_level": 3
     }
   }
