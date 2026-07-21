@@ -390,6 +390,17 @@ def main():
         (multi.get("forex_usd") or {}).get("trade_bank_label") or "台銀 App"
     )
 
+    def crypto_qty(sym: str) -> float:
+        """實際持有量；0 時不推出場訊號（否則會叫你賣沒持有的幣）。"""
+        for c in multi.get("crypto") or []:
+            s = str(c.get("symbol") or "").replace("-USD", "").upper()
+            if s == sym.upper():
+                try:
+                    return float(c.get("qty") or 0)
+                except (TypeError, ValueError):
+                    return 0.0
+        return 0.0
+
     # 幣加碼閘門：實際占比 vs allocation_targets.crypto，≤目標即自動開放；
     # 算不出（nav 資料缺）時保守維持暫停。取代原本寫死的 True。
     pause_crypto_add = True
@@ -768,7 +779,8 @@ def main():
         btc_closes = btc.get("closes") or []
         btc_mom_ok = len(btc_closes) >= 253 and btc_closes[-1] > btc_closes[-253]
         btc_below200 = bool(btc.get("ma200") and btc["price"] < btc["ma200"])
-        if btc_below200 and not btc_mom_ok:
+        btc_held = crypto_qty("BTC") > 0
+        if btc_below200 and not btc_mom_ok and btc_held:
             sell_note = product_policy("BTC-USD", policy).get("sell_note") or (
                 "趨勢轉空（<200MA 且 12月動量<0）→ 全減"
             )
@@ -792,7 +804,16 @@ def main():
             lines.append(f"* **緊急**：{msg}  \n")
         lines.append("\n")
 
-    eth = None if (day_mode and "--skip-btc" in sys.argv) else fetch_yahoo_history("ETH-USD")
+    # ETH 已移出配置universe（2026-07-22，樣本外CP為負）：僅在「仍持有」時監控出場，
+    # 不再顯示/建議加碼；未持有則整段略過，避免叫你賣沒有的幣。
+    eth_held = crypto_qty("ETH") > 0
+    core_only = [str(x).upper() for x in ((multi.get("crypto_policy") or {}).get("core_only") or [])]
+    eth_in_universe = "ETH" in core_only
+    if not eth_held and not eth_in_universe:
+        lines.append("## 以太坊\n\n* 已移出配置（樣本外CP為負）且未持有 → 不監控、不回補。  \n\n")
+        eth = None
+    else:
+        eth = None if (day_mode and "--skip-btc" in sys.argv) else fetch_yahoo_history("ETH-USD")
     if eth:
         lines.append("## 以太坊\n\n")
         lines.append(f"* 價格：{eth['price']:,.2f} USD ({eth['change_pct']:+.2f}%)  \n")
@@ -802,17 +823,9 @@ def main():
         if eth.get("ma200"):
             bias200 = (eth["price"] - eth["ma200"]) / eth["ma200"] * 100
             lines.append(f"* 200MA：{eth['ma200']:,.2f}（乖離 {bias200:+.2f}%）  \n")
-        if pause_crypto_add:
-            lines.append(f"* **加碼：暫停**（{crypto_pct_txt}）。建議金額 **0**。  \n")
-        else:
-            epol = product_policy("ETH-USD", policy)
-            eamts = epol.get("suggest_twd") or {}
-            lines.append(
-                f"* **加碼：開放**（{crypto_pct_txt}）｜評等 A 約 {int(eamts.get('A') or 0):,}"
-                f"／S 約 {int(eamts.get('S') or 0):,} 元（門檻≥{epol.get('buy_min_grade','A')}）  \n"
-            )
-        # 純 200MA 趨勢開關（2026-07-18 trend_exit_backtest：ETH 動量無增益，年線最穩）
-        if eth.get("ma200") and eth["price"] < eth["ma200"]:
+        lines.append("* **加碼：關閉**（已移出配置universe，只出不進）。  \n")
+        # 純 200MA 趨勢開關；僅在仍持有時推出場
+        if eth_held and eth.get("ma200") and eth["price"] < eth["ma200"]:
             sell_note = product_policy("ETH-USD", policy).get("sell_note") or (
                 "破 200MA → 全減（站回再持有）"
             )

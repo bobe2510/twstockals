@@ -259,7 +259,8 @@
       "note": "pause_us_ib=true：修復期只觀測美股 ETF，不推買點、不推「請匯款 IB」。要恢復推播先改 pause_us_ib=false，並把 notify_ib_go 改 true。"
     },
     "crypto_policy": {
-      "core_only": ["BTC", "ETH"],
+      "core_only": ["BTC"],
+      "eth_removed": "2026-07-22 ETH 移出配置universe（樣本外CP為負，見 sleeve_splits.crypto._source）。現持有0；若日後持有一律視為出清標的，不回補。",
       "idle_stable": {
         "prefer": "USDT",
         "yield_style": "cex_flexible_earn",
@@ -304,9 +305,8 @@
       "_source": "核心VOO:VXUS=7:3（既有政策）佔65%；成長袖QQQ 35%（政策要求 QQQ<VOO ✓ 35<45.5）。QQQ與QQQM二擇一。"
     },
     "crypto": {
-      "BTC": 0.7,
-      "ETH": 0.3,
-      "_source": "2026-07-18 trend_exit_backtest：BTC(複合)OOS +23.7%/-32.1% CP+15.44 遠優於 ETH(200MA)OOS +5.0%/-45.6% CP-7.70（ETH樣本外CP為負）。故偏重BTC。ETH續留僅為分散，可考慮歸零。"
+      "BTC": 1.0,
+      "_source": "2026-07-22 改 BTC-only：trend_exit_backtest 顯示 ETH 樣本外 CP -7.70（負）、報酬僅 BTC 五分之一且回撤更深（ETH OOS +5.0%/-45.6% vs BTC +23.7%/-32.1% CP+15.44）。證據不支持配置 ETH，故幣袖 3% 全給 BTC。"
     }
   },
   "force_exit_codes": [],

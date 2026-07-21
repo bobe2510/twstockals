@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-20T16:31:13+08:00",
-  "as_of": "2026-07-20",
+  "generated_at": "2026-07-21T13:45:14+08:00",
+  "as_of": "2026-07-21",
   "macro_level": 3,
   "force_exit_codes": [],
   "eod_actions": [
@@ -35,20 +35,20 @@
       "name": "國泰20年美債",
       "status": "portfolio",
       "force_exit": false,
-      "close": 28.03,
+      "close": 28.07,
       "stop": null,
       "profit": null,
       "entry": null,
       "add": null,
-      "ma5": 27.862000000000002,
-      "ma10": 27.963,
-      "ma20": 28.107,
+      "ma5": 27.910000000000004,
+      "ma10": 27.955000000000002,
+      "ma20": 28.1045,
       "low_5d": 27.78,
       "profit_rule": "etf_core",
       "allow_roi_tp": false,
-      "roi_pct": -15.572289156626507,
+      "roi_pct": -15.451807228915671,
       "cost": 33.2,
-      "ma200": 28.2675,
+      "ma200": 28.26895,
       "above_200ma": false
     },
     {
@@ -106,18 +106,18 @@
       "name": "Vanguard S&P500",
       "status": "watchlist_us",
       "force_exit": false,
-      "close": 683.17,
+      "close": 682.21,
       "stop": null,
       "profit": null,
       "entry": 681.5803991699219,
       "add": 638.6624493408203,
-      "ma5": 689.342,
-      "ma10": 689.422,
-      "ma20": 685.2275,
-      "low_5d": 683.17,
+      "ma5": 688.0840000000001,
+      "ma10": 688.581,
+      "ma20": 684.9325,
+      "low_5d": 682.21,
       "profit_rule": "us_etf",
       "currency": "USD",
-      "ma200": 640.6564,
+      "ma200": 641.00555,
       "above_200ma": true
     },
     {
@@ -198,16 +198,16 @@
       "name": "Vanguard Total International Stock",
       "status": "watchlist",
       "force_exit": false,
-      "close": 83.37,
-      "ma5": 84.172,
-      "ma10": 84.636,
-      "ma20": 84.9145,
-      "ma200": 79.5134,
+      "close": 83.07,
+      "ma5": 84.03,
+      "ma10": 84.326,
+      "ma20": 84.7295,
+      "ma200": 79.56145000000001,
       "above_200ma": true,
-      "low_5d": 83.37,
-      "entry": 84.172,
-      "stop": 83.37,
-      "profit": 84.636
+      "low_5d": 83.07,
+      "entry": 84.03,
+      "stop": 83.07,
+      "profit": 84.326
     },
     {
       "code": "QQQM",
@@ -227,5 +227,5 @@
     }
   ],
   "pruned_against_my_targets": true,
-  "synced_at": "2026-07-20T16:31:13+08:00"
+  "synced_at": "2026-07-21T13:45:14+08:00"
 }

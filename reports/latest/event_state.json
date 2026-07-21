@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-07-20T15:47:45+08:00",
+  "updated_at": "2026-07-21T19:00:22+08:00",
   "events": {
     "macro_level": {
       "active": true,
@@ -52,9 +52,9 @@
       "active": false,
       "meta": {
         "fail_streak": 0,
-        "ok_streak": 56
+        "ok_streak": 66
       },
-      "ok_streak": 56,
+      "ok_streak": 66,
       "fail_streak": 0,
       "notify_clear": true
     },
@@ -137,7 +137,7 @@
           "VXUS"
         ],
         "off": [],
-        "wire_twd": 610811
+        "wire_twd": 1168993
       },
       "reclaim_streak": 0,
       "fail_streak": 0,
@@ -149,8 +149,8 @@
       "last_change": "2026-07-20T15:40:38+08:00",
       "notify_clear": false,
       "meta": {
-        "change_pct": 0.11683760955594202,
-        "price": 32.301998138427734
+        "change_pct": 0.1013491185097859,
+        "price": 32.297000885009766
       },
       "reclaim_streak": 0,
       "fail_streak": 0,
@@ -160,7 +160,7 @@
     "gold_shock_GC_F_20260720": {
       "active": false,
       "meta": {
-        "change_pct": 0.2018615335015017,
+        "change_pct": 0.3239713947763123,
         "allowed": true,
         "below_ma50": true
       },
@@ -169,7 +169,7 @@
     "crypto_shock_BTC-USD_20260720": {
       "active": false,
       "meta": {
-        "change_pct": -0.8175668013029158,
+        "change_pct": -0.6348020334183468,
         "allowed": false,
         "below_ma50": false
       },
@@ -178,7 +178,7 @@
     "crypto_shock_ETH-USD_20260720": {
       "active": false,
       "meta": {
-        "change_pct": -0.5512143272995318,
+        "change_pct": -0.1618390902827116,
         "allowed": false,
         "below_ma50": false
       },
@@ -192,6 +192,41 @@
         "suggest_shares": 1000
       },
       "notify_clear": true
+    },
+    "fx_twd_shock_20260721": {
+      "active": false,
+      "meta": {
+        "change_pct": -0.030942102615627576,
+        "price": 32.303001403808594
+      },
+      "notify_clear": false
+    },
+    "gold_shock_GC_F_20260721": {
+      "active": false,
+      "meta": {
+        "change_pct": 1.4587437171214912,
+        "allowed": true,
+        "below_ma50": true
+      },
+      "notify_clear": false
+    },
+    "crypto_shock_BTC-USD_20260721": {
+      "active": false,
+      "meta": {
+        "change_pct": 1.4325227095765447,
+        "allowed": false,
+        "below_ma50": false
+      },
+      "notify_clear": false
+    },
+    "crypto_shock_ETH-USD_20260721": {
+      "active": false,
+      "meta": {
+        "change_pct": 1.5592433732156685,
+        "allowed": false,
+        "below_ma50": false
+      },
+      "notify_clear": false
     }
   }
 }
