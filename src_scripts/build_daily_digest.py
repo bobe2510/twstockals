@@ -165,8 +165,15 @@ def build_body(slot: str) -> tuple[str, str]:
             elif isinstance(op, dict):
                 lines.append(f"• {op.get('text') or op.get('title') or op}")
     elif eod_actions:
-        for a in eod_actions[:12]:
-            lines.append(f"• {a}")
+        # 與 scan_position_levels 同步：核心ETF／債券的舊「總經句」已由各袖規則取代，
+        # 直接顯示會與現行政策打架（例：債券寫「防禦續抱」但政策是 gradual_exit 逢彈出清）。
+        STALE_PREFIXES = ("債券配置", "正2擇時", "0050底倉", "正2袖口")
+        shown = [a for a in eod_actions if not str(a).startswith(STALE_PREFIXES)]
+        if shown:
+            for a in shown[:12]:
+                lines.append(f"• {a}")
+        else:
+            lines.append("• （無；各袖規則見下方今日行動）")
     else:
         lines.append("• （無急迫待辦；詳見 levels／playbook）")
 

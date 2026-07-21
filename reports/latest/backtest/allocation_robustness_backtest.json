@@ -1,0 +1,241 @@
+{
+  "generated_at": "2026-07-21T10:45:20",
+  "range": [
+    "2004-03-24",
+    "2026-07-17"
+  ],
+  "btc_start": "2014-09-17",
+  "solo": {
+    "tw": {
+      "cagr": 13.179,
+      "mdd": -56.739,
+      "vol": 18.963,
+      "sharpe": 0.748,
+      "calmar": 0.232,
+      "cp": -1.006
+    },
+    "lev": {
+      "cagr": 17.606,
+      "mdd": -55.742,
+      "vol": 28.121,
+      "sharpe": 0.719,
+      "calmar": 0.316,
+      "cp": 3.671
+    },
+    "us": {
+      "cagr": 7.235,
+      "mdd": -31.939,
+      "vol": 17.266,
+      "sharpe": 0.491,
+      "calmar": 0.227,
+      "cp": -0.749
+    },
+    "gold": {
+      "cagr": 11.036,
+      "mdd": -38.485,
+      "vol": 21.063,
+      "sharpe": 0.603,
+      "calmar": 0.287,
+      "cp": 1.415
+    },
+    "fx": {
+      "cagr": 1.546,
+      "mdd": -17.531,
+      "vol": 10.825,
+      "sharpe": 0.196,
+      "calmar": 0.088,
+      "cp": -2.836
+    },
+    "btc": {
+      "cagr": 61.501,
+      "mdd": -64.359,
+      "vol": 56.003,
+      "sharpe": 1.132,
+      "calmar": 0.956,
+      "cp": 45.411
+    }
+  },
+  "candidates": {
+    "現行(正規化)": {
+      "weights": {
+        "tw": 39.3,
+        "lev": 13.5,
+        "us": 19.1,
+        "gold": 14.0,
+        "fx": 14.0
+      },
+      "cagr_med": 8.665,
+      "cagr_p10": 5.164,
+      "mdd_med": -18.591,
+      "mdd_p10": -31.803,
+      "sharpe_med": 0.794,
+      "sharpe_p10": 0.466,
+      "cp_med": 3.745,
+      "cp_p10": -0.508,
+      "n_cohorts": 32
+    },
+    "等權": {
+      "weights": {
+        "tw": 20.0,
+        "lev": 20.0,
+        "us": 20.0,
+        "gold": 20.0,
+        "fx": 20.0
+      },
+      "cagr_med": 8.381,
+      "cagr_p10": 4.302,
+      "mdd_med": -14.859,
+      "mdd_p10": -23.413,
+      "sharpe_med": 0.728,
+      "sharpe_p10": 0.407,
+      "cp_med": 4.982,
+      "cp_p10": 1.359,
+      "n_cohorts": 32
+    },
+    "核心更重(防禦)": {
+      "weights": {
+        "tw": 45,
+        "lev": 3,
+        "us": 27,
+        "gold": 18,
+        "fx": 7
+      },
+      "cagr_med": 8.097,
+      "cagr_p10": 5.178,
+      "mdd_med": -20.196,
+      "mdd_p10": -31.99,
+      "sharpe_med": 0.728,
+      "sharpe_p10": 0.467,
+      "cp_med": 3.184,
+      "cp_p10": -0.626,
+      "n_cohorts": 32
+    },
+    "去正2": {
+      "weights": {
+        "tw": 45,
+        "us": 25,
+        "gold": 18,
+        "fx": 12
+      },
+      "cagr_med": 7.577,
+      "cagr_p10": 5.03,
+      "mdd_med": -19.284,
+      "mdd_p10": -30.472,
+      "sharpe_med": 0.71,
+      "sharpe_p10": 0.456,
+      "cp_med": 3.131,
+      "cp_p10": -0.58,
+      "n_cohorts": 32
+    },
+    "去美金": {
+      "weights": {
+        "tw": 42,
+        "lev": 14,
+        "us": 22,
+        "gold": 22
+      },
+      "cagr_med": 9.172,
+      "cagr_p10": 4.819,
+      "mdd_med": -20.472,
+      "mdd_p10": -34.234,
+      "sharpe_med": 0.799,
+      "sharpe_p10": 0.425,
+      "cp_med": 4.22,
+      "cp_p10": 0.264,
+      "n_cohorts": 32
+    },
+    "股債金三分": {
+      "weights": {
+        "tw": 30,
+        "lev": 8,
+        "us": 25,
+        "gold": 30,
+        "fx": 7
+      },
+      "cagr_med": 8.688,
+      "cagr_p10": 4.349,
+      "mdd_med": -17.662,
+      "mdd_p10": -25.221,
+      "sharpe_med": 0.791,
+      "sharpe_p10": 0.385,
+      "cp_med": 4.496,
+      "cp_p10": 1.063,
+      "n_cohorts": 32
+    },
+    "風險平價(逆波動)": {
+      "weights": {
+        "tw": 18.4,
+        "lev": 12.4,
+        "us": 20.2,
+        "gold": 16.6,
+        "fx": 32.3
+      },
+      "cagr_med": 6.703,
+      "cagr_p10": 4.117,
+      "mdd_med": -12.901,
+      "mdd_p10": -18.778,
+      "sharpe_med": 0.669,
+      "sharpe_p10": 0.382,
+      "cp_med": 4.028,
+      "cp_p10": 1.521,
+      "n_cohorts": 32
+    }
+  },
+  "leave_one_out": {
+    "TW核心": {
+      "cagr_med": 7.07,
+      "cagr_p10": 4.282,
+      "mdd_med": -12.904,
+      "mdd_p10": -16.11,
+      "sharpe_med": 0.61,
+      "sharpe_p10": 0.356,
+      "cp_med": 4.408,
+      "cp_p10": 1.002,
+      "n_cohorts": 32
+    },
+    "正2": {
+      "cagr_med": 7.299,
+      "cagr_p10": 5.005,
+      "mdd_med": -18.582,
+      "mdd_p10": -30.311,
+      "sharpe_med": 0.713,
+      "sharpe_p10": 0.453,
+      "cp_med": 2.988,
+      "cp_p10": -0.41,
+      "n_cohorts": 32
+    },
+    "美股": {
+      "cagr_med": 9.512,
+      "cagr_p10": 4.727,
+      "mdd_med": -17.799,
+      "mdd_p10": -36.232,
+      "sharpe_med": 0.775,
+      "sharpe_p10": 0.448,
+      "cp_med": 3.085,
+      "cp_p10": -0.351,
+      "n_cohorts": 32
+    },
+    "黃金": {
+      "cagr_med": 8.333,
+      "cagr_p10": 5.101,
+      "mdd_med": -20.771,
+      "mdd_p10": -36.33,
+      "sharpe_med": 0.715,
+      "sharpe_p10": 0.434,
+      "cp_med": 3.758,
+      "cp_p10": -1.956,
+      "n_cohorts": 32
+    },
+    "美金": {
+      "cagr_med": 9.686,
+      "cagr_p10": 5.391,
+      "mdd_med": -21.584,
+      "mdd_p10": -36.87,
+      "sharpe_med": 0.8,
+      "sharpe_p10": 0.478,
+      "cp_med": 3.829,
+      "cp_p10": -1.044,
+      "n_cohorts": 32
+    }
+  }
+}
