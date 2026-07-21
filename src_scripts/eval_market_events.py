@@ -530,30 +530,36 @@ def eval_us_ib_window(*, quiet: bool, force: bool) -> list[str]:
 
         nav = _nav_parts(targets)
         _, us_tgt, us_held = _alloc_pct(nav, "us_etf", targets)
-        gap_us = max(us_tgt * nav["total_nav"] - us_held, 0)
-        # 本次可匯額 = deployable × (美股缺口 / 全部低配袖缺口)——
-        # 長期目標靠未來新資金養，不能讓美股獨吞現有可動用資金
+        base = nav.get("investable_base") or nav["total_nav"]
+        gap_us = max(us_tgt * base - us_held, 0)
         deployable = float((targets.get("multi_asset") or {}).get("deployable_cash_twd") or 0)
         total_gap = 0.0
-        for key in ("tw_core_0050", "tw_lev_00631L", "gold_fx", "us_etf"):
+        for key in ("tw_core_0050", "tw_lev_00631L", "gold", "fx", "us_etf"):
             _, t, h = _alloc_pct(nav, key, targets)
-            total_gap += max(t * nav["total_nav"] - h, 0)
+            total_gap += max(t * base - h, 0)
         budget = min(gap_us, deployable * gap_us / total_gap) if total_gap > 0 else 0
-        if budget > 50_000:
-            split = {"VOO": 0.455, "VXUS": 0.195, "QQQ": 0.35}
-            rows = []
-            for s, w in split.items():
-                tot = budget * w
-                ma = gates.get(s, {}).get("bias200")
-                rows.append(f"  {s}：總額 ≈{tot:,.0f} 元｜每批 ≈{tot/3:,.0f} 元")
+        ib_cash_twd = float(nav.get("ib_usd", 0.0))  # IB 現有火藥（可一次買）
+        split = {"VOO": 0.455, "VXUS": 0.195, "QQQ": 0.35}
+        if ib_cash_twd > 50_000:
+            # IB 已有火藥 → lump-sum：趨勢ON就一次買掉
+            rows = [f"  {s}：≈{ib_cash_twd*w:,.0f} 元（一次買）" for s, w in split.items()]
             amounts_txt = (
-                f"\n\n【建議金額】本次匯款 ≈{budget:,.0f} 元（可動用 {deployable:,.0f} 依各袖缺口比例分配；"
-                f"美股長期目標 {us_tgt*100:.0f}%≈{gap_us:,.0f} 元靠未來資金逐步到位）\n"
-                f"分 3 批×每月：\n"
+                f"\n\n【IB 有火藥 ≈{ib_cash_twd:,.0f} 元｜趨勢ON→一次買掉（lump）】\n"
                 + "\n".join(rows)
-                + "\n出場＝趨勢閘門轉空（VOO/QQQ：<200MA且12月動量負；VXUS：<200MA）；"
-                "無固定停損價，EOD 確認執行。"
+                + "\n回測：趨勢ON時一次進的進場價比未來一年89%的日子便宜；別等回檔（等不到且不划算）。"
+                + f"\n後續美股缺口 ≈{max(gap_us - ib_cash_twd, 0):,.0f} 元：等美金回買點再換匯匯入，不硬追。"
             )
+        elif budget > 50_000:
+            # IB 無火藥 → 先備彈
+            amounts_txt = (
+                f"\n\n【IB 尚無資金｜先備彈】美股缺口 ≈{gap_us:,.0f} 元。\n"
+                "lump-sum 需火藥先在 IB（電匯1-3日），否則訊號來當天買不到。\n"
+                f"建議先匯一筆備著（既有便宜美金優先；本次約 {budget:,.0f} 元），"
+                "訊號一來當天一次買；其餘缺口等美金便宜再換匯。"
+            )
+        if amounts_txt:
+            amounts_txt += ("\n出場＝趨勢閘門轉空（VOO/QQQ：<200MA且12月動量負；VXUS：<200MA）；"
+                            "無固定停損價，EOD 確認執行。")
     except Exception as e:
         amounts_txt = f"\n（金額計算失敗：{e}）"
 
@@ -568,11 +574,11 @@ def eval_us_ib_window(*, quiet: bool, force: bool) -> list[str]:
     apply_desired(
         "us_ib_window",
         voo_on,
-        title_on="美股布局窗開啟｜建議開始入金 IB",
+        title_on="美股趨勢多方｜IB有火藥就一次進",
         body_on=(
-            f"VOO（核心錨）轉多：{detail}。\n"
-            "IB 電匯通常需 1-3 個工作天到帳，建議現在啟動匯款流程；"
-            "資金到位後依下列金額分批進場。"
+            f"VOO（核心錨）趨勢多方：{detail}。\n"
+            "策略＝lump-sum：IB 有火藥就趨勢ON當天一次買這批（別等回檔）；"
+            "沒火藥就先匯款備彈，訊號來當天一次進。手續延遲(電匯1-3日)＝先備彈的理由。"
             + amounts_txt
             + pause_note
         ),
