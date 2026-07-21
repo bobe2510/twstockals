@@ -179,6 +179,9 @@
     },
     "forex_usd": {
       "bank": "BOT",
+      "intent": "ballast",
+      "sleeve": "gold_fx",
+      "intent_note": "囤匯壓艙石：一直是美金、當避險，算 gold_fx 袖。要匯IB買股的美金另記 ib_cash_usd / ib_wire_in_transit_usd（算 us_etf 袖）。同一種幣依目的地歸袖，不重複計。",
       "trade_bank_label": "國泰世華 App",
       "trade_bank_note": "2026-07-20 起外幣買賣改國泰世華（台銀庫存美金週五全額匯 IB 後歸零；台銀帳戶保留給黃金存摺）。推播文案讀此欄位。",
       "qty": 16158.31,
@@ -237,7 +240,7 @@
       "reminder": "approx_twd 為靜態估值，隨股價漂移；每次回報成交或月度對帳時一併更新。"
     },
     "ib_cash_usd": 0,
-    "ib_cash_note": "IB 帳戶美元現金（已匯入未買進的部分）。匯款到帳後填入；買進後遞減。屬 gold_fx／美金袖曝險，非 us_etf。",
+    "ib_cash_note": "IB 美元現金（已匯入未買股）。intent=us_equity_funding：算 us_etf 袖『待部署』，不算避險。到帳填入、買股後遞減。us_etf 缺口自動抵掉此額，避免重複匯款。",
     "ib_wire_in_transit_usd": 0,
     "ib_wire_in_transit_note": "電匯在途（已離開台銀、尚未進 IB，通常1-3個工作天）。送出當日填入並把 forex_usd 歸零；到帳日改填 ib_cash_usd 並歸零本欄。兩者都計入美金袖 NAV，避免在途期間淨值短少。",
     "usdtwd_rate_hint": 32.4,
@@ -278,13 +281,16 @@
     "pause_us_ib": true
   },
   "allocation_targets": {
-    "tw_core_0050": 0.35,
-    "tw_lev_00631L": 0.12,
-    "tw_stocks": 0.08,
+    "tw_core_0050": 0.29,
+    "tw_lev_00631L": 0.08,
+    "tw_stocks": 0.0,
     "bonds": 0.0,
-    "gold_fx": 0.25,
-    "us_etf": 0.17,
-    "crypto": 0.03
+    "gold_fx": 0.27,
+    "us_etf": 0.33,
+    "crypto": 0.03,
+    "_source": "2026-07-21 allocation_regime_windows（跨危機minimax）：降台灣集中53→37%（穩健、非recency）、美股補到分散者份量、黃金維持適度16%（不追近期漲、資料看不到1980-2000金熊故保守）、美金留壓艙石。tw_stocks 8%已出清歸0。",
+    "_gold_fx_split": "gold_fx 27% 內部＝黃金 ~16% + 囤匯壓艙石美金 ~11%（後者依目的地歸此袖；匯IB待買股的美金歸 us_etf）",
+    "_us_etf_note": "us_etf 33% ＝已買ETF ＋ IB現金 ＋ 電匯在途（皆美股袖進度）；新錢分批建、勿急"
   },
   "force_exit_codes": [],
   "cleared_positions": [

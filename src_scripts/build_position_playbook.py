@@ -46,12 +46,15 @@ def _nav_parts(targets: dict) -> dict:
     """粗估各袖口 TWD 市值。"""
     multi = targets.get("multi_asset") or {}
     gold = (multi.get("gold_passbook") or {}).get("approx_twd") or 0
-    # 美金袖＝台銀存摺＋IB 未動用現金＋電匯在途（1-3個工作天）。
-    # 少算任一項會讓 NAV 短少、各袖占比失真（2026-07-20 匯 IB 前補上）。
+    # 美金依「目的地」分兩袋（2026-07-21）：
+    #   fx_ballast＝囤匯壓艙石（forex_usd，一直是美金）→ 歸 gold_fx 避險袖
+    #   ib_usd    ＝匯IB待買股（IB現金＋電匯在途，要變美股）→ 歸 us_etf 袖（待部署）
+    # 同一種幣不重複計兩袖；us_etf 缺口自動抵掉已在IB的美金，避免重複匯款。
     fx_rate = float(multi.get("usdtwd_rate_hint") or 32.4)
-    usd = float((multi.get("forex_usd") or {}).get("approx_twd") or 0)
-    usd += float(multi.get("ib_cash_usd") or 0) * fx_rate
-    usd += float(multi.get("ib_wire_in_transit_usd") or 0) * fx_rate
+    fx_ballast = float((multi.get("forex_usd") or {}).get("approx_twd") or 0)
+    ib_usd = (float(multi.get("ib_cash_usd") or 0)
+              + float(multi.get("ib_wire_in_transit_usd") or 0)) * fx_rate
+    usd = fx_ballast + ib_usd  # 合計仍計入總 NAV
     crypto = 0
     for c in multi.get("crypto") or []:
         if c.get("approx_twd_total_crypto"):
@@ -85,6 +88,8 @@ def _nav_parts(targets: dict) -> dict:
         "port": port,
         "gold": float(gold),
         "usd": float(usd),
+        "fx_ballast": float(fx_ballast),  # 囤匯壓艙石 → gold_fx
+        "ib_usd": float(ib_usd),          # 匯IB待買股 → us_etf 待部署
         "crypto": float(crypto),
         "invested": invested,
         "cash": cash,
@@ -114,14 +119,16 @@ def _alloc_pct(nav: dict, key: str, targets: dict) -> tuple[float, float, float]
             (nav["port"].get(c) or {}).get("approx") or 0 for c in ("2301", "3484")
         )
     elif key == "gold_fx":
-        held = nav["gold"] + nav["usd"]
+        # 避險袖＝黃金＋囤匯壓艙石美金（不含要匯IB買股的美金）
+        held = nav["gold"] + nav.get("fx_ballast", nav["usd"])
     elif key == "crypto":
         held = nav["crypto"]
     elif key == "us_etf":
+        # 美股袖＝已買ETF＋匯IB待買股的美金（現金＋在途）；後者是「待部署」進度
         held = sum(
             float(x.get("approx_twd") or 0)
             for x in ((targets.get("multi_asset") or {}).get("us_etf") or [])
-        )
+        ) + nav.get("ib_usd", 0.0)
     else:
         held = 0.0
     held = float(held)
