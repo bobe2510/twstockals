@@ -471,7 +471,7 @@ def auto_adjust_deployable(targets: dict, now) -> None:
 
         nav = _nav_parts(targets)
         gaps = {}
-        for key in ("tw_core_0050", "tw_lev_00631L", "us_etf", "gold_fx", "crypto"):
+        for key in ("tw_core_0050", "tw_lev_00631L", "us_etf", "gold", "fx", "crypto"):
             _, tgt, held = _alloc_pct(nav, key, targets)
             gaps[key] = max(tgt * nav["total_nav"] - held, 0.0)
 

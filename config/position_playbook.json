@@ -12,7 +12,8 @@
       "tw_core_0050": "taiex",
       "tw_lev_00631L": "taiex",
       "us_etf": "us",
-      "gold_fx": "ungated",
+      "gold": "ungated",
+      "fx": "ungated",
       "crypto": "ungated"
     },
     "sleeve_level_note": "各袖依自己市場判定景氣閘門（台股袖看TAIEX、美股袖看VOO、避險袖不受限）。修正原本用單一台股指標綁住所有袖的不一致。",
@@ -108,7 +109,7 @@
     },
     "gold": {
       "codes": ["GOLD"],
-      "allocation_key": "gold_fx",
+      "allocation_key": "gold",
       "entry": {
         "gate_type": "conditional",
         "when": ["grade>=B"],
@@ -130,7 +131,7 @@
     },
     "usd_fx": {
       "codes": ["USDTWD"],
-      "allocation_key": "gold_fx",
+      "allocation_key": "fx",
       "entry": {
         "gate_type": "conditional",
         "when": ["grade>=A"],

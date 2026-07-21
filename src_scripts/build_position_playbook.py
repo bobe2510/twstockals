@@ -118,8 +118,12 @@ def _alloc_pct(nav: dict, key: str, targets: dict) -> tuple[float, float, float]
         held = sum(
             (nav["port"].get(c) or {}).get("approx") or 0 for c in ("2301", "3484")
         )
+    elif key == "gold":
+        held = nav["gold"]
+    elif key == "fx":
+        held = nav.get("fx_ballast", nav["usd"])  # 只算囤匯壓艙石美金
     elif key == "gold_fx":
-        # 避險袖＝黃金＋囤匯壓艙石美金（不含要匯IB買股的美金）
+        # 舊合併鍵（向後相容）：黃金＋壓艙石美金
         held = nav["gold"] + nav.get("fx_ballast", nav["usd"])
     elif key == "crypto":
         held = nav["crypto"]
@@ -305,61 +309,46 @@ def build() -> dict:
             }
         )
 
-    # —— 黃金／美金（gold_fx 合計超配檢查：長抱唯一的減碼路徑） ——
+    # —— 黃金（獨立超配檢查；黃金上限才真正生效，不再被 fx 稀釋） ——
     g_pol = (policy.get("products") or {}).get("GOLD") or {}
     u_pol = (policy.get("products") or {}).get("USDTWD") or {}
-    gf_pct, gf_tgt, gf_held = _alloc_pct(nav, "gold_fx", targets)
-    gf_over = gf_tgt and gf_pct > gf_tgt + 0.05  # +5pp（rebalance_band_backtest 2026-07-19）
-    gold_today = f"持有約 {nav['gold']:,.0f} 元"
-    if gf_over:
-        excess = gf_held - gf_tgt * nav["total_nav"]
-        heavier = "GOLD" if nav["gold"] >= nav["usd"] else "USDTWD"
-        gold_today = (
-            f"gold_fx 合計超配 {gf_pct*100:.1f}%>{gf_tgt*100:.0f}%｜"
-            f"建議減較重一腿（{heavier}）約 {excess:,.0f} 元"
-        )
-        if not already_suggested_trim(heavier, "rebalance", trim_state):
-            intents.append(
-                make_intent(
-                    code=heavier,
-                    venue="BOT",
-                    side="sell",
-                    action="rebalance_trim",
-                    qty=None,
-                    unit="",
-                    twd=excess,
-                    limit_ref=f"gold_fx {gf_pct*100:.1f}%>目標{gf_tgt*100:.0f}%",
-                    rationale="避險袖超配再平衡（長抱策略唯一減碼路徑）",
-                    priority=30,
-                )
-            )
-            mark_trim_suggested(heavier, "rebalance", 0, trim_state)
-    cards.append(
-        {
-            "code": "GOLD",
-            "role": "gold",
-            "entry": f"≥{g_pol.get('buy_min_grade', 'B')}；budget 見 policy",
-            "add": "≥B＋未滿budget（買滿長抱）",
-            "tp": "僅超配再平衡；50MA停利已停用",
-            "sl": "未過gate＝不加（非硬停損）",
-            "held_pct": round(nav["gold"] / nav["total_nav"] * 100, 1),
-            "target_pct": round(gf_tgt * 100, 1),
-            "today": gold_today,
-        }
-    )
-    cards.append(
-        {
-            "code": "USDTWD",
-            "role": "usd_fx",
-            "entry": f"≥{u_pol.get('buy_min_grade', 'A')}",
-            "add": "≥A；乖離≥1.5%關加",
-            "tp": "1.5%/3%袖口減碼",
-            "sl": "同均值回歸減碼",
-            "held_pct": round(nav["usd"] / nav["total_nav"] * 100, 1),
-            "target_pct": "gold_fx合計",
-            "today": f"持有約 {nav['usd']:,.0f} 元",
-        }
-    )
+    g_pct, g_tgt, g_held = _alloc_pct(nav, "gold", targets)
+    gold_today = f"持有約 {nav['gold']:,.0f} 元（{g_pct*100:.1f}%／目標{g_tgt*100:.0f}%）"
+    if g_tgt and g_pct > g_tgt + 0.05:  # +5pp
+        excess = g_held - g_tgt * nav["total_nav"]
+        gold_today = f"黃金超配 {g_pct*100:.1f}%>{g_tgt*100:.0f}%｜建議減約 {excess:,.0f} 元"
+        if not already_suggested_trim("GOLD", "rebalance", trim_state):
+            intents.append(make_intent(
+                code="GOLD", venue="BOT", side="sell", action="rebalance_trim",
+                qty=None, unit="", twd=excess,
+                limit_ref=f"黃金 {g_pct*100:.1f}%>目標{g_tgt*100:.0f}%",
+                rationale="黃金超配再平衡（獨立上限；長抱唯一減碼路徑）", priority=30))
+            mark_trim_suggested("GOLD", "rebalance", 0, trim_state)
+    cards.append({
+        "code": "GOLD", "role": "gold",
+        "entry": f"≥{g_pol.get('buy_min_grade', 'B')}；budget 見 policy",
+        "add": "≥B＋未滿budget（買滿長抱）",
+        "tp": "僅超配再平衡；50MA停利已停用", "sl": "未過gate＝不加（非硬停損）",
+        "held_pct": round(g_pct * 100, 1), "target_pct": round(g_tgt * 100, 1),
+        "today": gold_today,
+    })
+
+    # —— 美金壓艙石（獨立目標；只算囤匯，不含匯IB待買股的美金） ——
+    fx_pct, fx_tgt, fx_held = _alloc_pct(nav, "fx", targets)
+    fx_today = f"壓艙石約 {nav.get('fx_ballast', 0):,.0f} 元（{fx_pct*100:.1f}%／目標{fx_tgt*100:.0f}%）"
+    if fx_tgt and fx_pct > fx_tgt + 0.03:  # 低波動，帶寬窄一點
+        excess = fx_held - fx_tgt * nav["total_nav"]
+        fx_today = f"美金壓艙石超配 {fx_pct*100:.1f}%>{fx_tgt*100:.0f}%｜可減約 {excess:,.0f} 元（或轉IB買股）"
+    elif fx_tgt and fx_pct < fx_tgt - 0.03:
+        fx_today += "｜低於目標，美金回到買點區（乖離年線轉負）時補壓艙石"
+    cards.append({
+        "code": "USDTWD", "role": "usd_fx_ballast",
+        "entry": f"≥{u_pol.get('buy_min_grade', 'A')}（囤匯壓艙石，非匯IB款）",
+        "add": "≥A且美金便宜；乖離≥1.5%關加", "tp": "1.5%/3%袖口減碼",
+        "sl": "同均值回歸減碼",
+        "held_pct": round(fx_pct * 100, 1), "target_pct": round(fx_tgt * 100, 1),
+        "today": fx_today,
+    })
 
     # —— crypto 超配 ——
     cpct, ctgt, cheld = _alloc_pct(nav, "crypto", targets)
